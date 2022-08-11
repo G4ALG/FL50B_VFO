@@ -625,9 +625,9 @@ void setup()
     delay(2000);
     lcd.clear(); // Clear the display
 
-    lcd.print("Build D05.01");   // Display the Build information
+    lcd.print("Build D05.02");   // Display the Build information
     lcd.setCursor(0, 1);         // Set cursor to first column, second row
-    lcd.print("08/08/2022");     // Display version date.
+    lcd.print("10/08/2022");     // Display version date.
     delay(2000);
     lcd.clear(); // Clear the display
 
