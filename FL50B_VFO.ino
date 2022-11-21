@@ -666,7 +666,7 @@ void ChangeFrequency(int dir)
 */
 byte GetSwSet1ButtonNumber()
 {
-    byte numberOfConsecutiveButtonResultsRequired = 3;
+    byte numberOfConsecutiveButtonResultsRequired = 20;
     byte numberOfConsecutiveButtonResults = 0;
     byte previousButtonNumber = -1;
 
