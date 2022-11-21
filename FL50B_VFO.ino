@@ -245,7 +245,6 @@ unsigned long Txlo = 5712400; // Frequency of local oscillator in FR-50B in Hz
 // Push-button
 // ---------------------------
 byte ButtonNumber;
-byte OldButtonNumber = 0;
 
 // I2C device addresses
 // ---------------------------
@@ -309,11 +308,11 @@ void setup()
     delay(2000);
     lcd.clear(); // Clear the display
 
-    lcd.print("Build V01.00")
+    lcd.print("Build V01.04")
 
         ;                    // Display the Build information
     lcd.setCursor(0, 1);     // Set cursor to first column, second row
-    lcd.print("11/10/2022"); // Display version date.
+    lcd.print("21/11/2022"); // Display version date.
     delay(2000);
     lcd.clear(); // Clear the display
 
@@ -420,24 +419,16 @@ void loop()
 
     //------------------------------------------------------------------------
     // if any of the buttons have been pressed...
-    OldButtonNumber = 0; // clear the last command
     bool ButtonHeld = false;
     unsigned long ButtonPressedDuration = millis();
 
     ButtonNumber = GetSwSet1ButtonNumber();
 
-    byte FirstButtonNumber = 0;
-    while (ButtonNumber > 0)
+    while (ButtonNumber > 0 && GetSwSet1ButtonNumber() > 0)
     {
-        // one of the multiplexed switches is being held down
-        delay(5); // was 20
-        if (FirstButtonNumber == 0)
-            FirstButtonNumber = ButtonNumber;
-        OldButtonNumber = ButtonNumber;
-        ButtonNumber = GetSwSet1ButtonNumber();
+        delay(5);
+        // one of the multiplexed switches is being held down - wait!
     }
-
-    ButtonNumber = FirstButtonNumber; // experiment to accept the first reading
 
     // if one of the buttons was pressed (and is now released) act on it...
 
