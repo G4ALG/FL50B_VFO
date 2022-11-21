@@ -675,9 +675,9 @@ void ChangeFrequency(int dir)
 */
 byte GetSwSet1ButtonNumber()
 {
-    int numberOfConsecutiveButtonResultsRequired = 3;
-    int numberOfConsecutiveButtonResults = 0;
-    int previousButtonNumber = -1;
+    byte numberOfConsecutiveButtonResultsRequired = 3;
+    byte numberOfConsecutiveButtonResults = 0;
+    byte previousButtonNumber = -1;
 
     while(numberOfConsecutiveButtonResults < numberOfConsecutiveButtonResultsRequired) {
         int currentButtonNumber = GetSwSet1ButtonNumberAtInstant();
@@ -689,8 +689,8 @@ byte GetSwSet1ButtonNumber()
         }
     }
 
-    return currentButtonNumber;
-}
+    return previousButtonNumber;
+} // GetSwSet1ButtonNumber()
 
 byte GetSwSet1ButtonNumberAtInstant()
 // Take a reading of the front panel buttons and map it to a button number
@@ -717,7 +717,7 @@ byte GetSwSet1ButtonNumberAtInstant()
         Serial.println(z);
     }
     return b;
-} // GetSwSet1ButtonNumber()
+} // GetSwSet1ButtonNumberAtInstant()
 
 int ReadAnalogPin(byte p)
 {
