@@ -445,7 +445,7 @@ void loop()
     {
         if (!FunctionState)
         {
-            Serial.println("<B1>VFO down");
+            Serial.println("<B1>BAND DOWN");
             if (BandIndex == 0)
             {
                 BandIndex = (NUMBER_OF_BANDS - 1);
@@ -483,7 +483,7 @@ void loop()
             }
             else
             {
-                Serial.println("<B4>VFO up");
+                Serial.println("<B4>BAND UP");
                 //               Serial.print("B4 BandIndex="); Serial.print(BandIndex);
                 //               Serial.print(" VFO=");
                 //               Serial.println(BandSet[BandIndex].band);
@@ -522,7 +522,7 @@ void loop()
 
     {
         if (!FunctionState)
-            Serial.println("<B6>f step r");
+            Serial.println("<B6>FREQUENCY STEP SIZE DOWN");
         else
             Serial.println("<F><B6>f step l");
 
@@ -689,6 +689,13 @@ byte GetSwSet1ButtonNumber()
         }
     }
 
+    if (previousButtonNumber > 0)
+    {
+        Serial.print(" [Front button - ");
+        Serial.print(previousButtonNumber);
+        Serial.println("]");
+    }
+
     return previousButtonNumber;
 } // GetSwSet1ButtonNumber()
 
@@ -711,10 +718,8 @@ byte GetSwSet1ButtonNumberAtInstant()
 
     if (b > 0)
     {
-        Serial.print("Front button=");
-        Serial.print(b);
-        Serial.print("   z=");
-        Serial.println(z);
+        Serial.print(z);
+        Serial.print(" : ");
     }
     return b;
 } // GetSwSet1ButtonNumberAtInstant()
