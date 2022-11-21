@@ -391,7 +391,6 @@ void setup()
 // ------------------------------------------------------------------------------------------------------------------
 //     Start of loop() function.    This function loops repeatedly.
 // ------------------------------------------------------------------------------------------------------------------
-
 void loop()
 {
     UpdateEeprom();
@@ -426,6 +425,7 @@ void loop()
     unsigned long ButtonPressedDuration = millis();
 
     ButtonNumber = GetSwSet1ButtonNumber();
+
     byte FirstButtonNumber = 0;
     while (ButtonNumber > 0)
     {
@@ -669,7 +669,30 @@ void ChangeFrequency(int dir)
     FrequencyChanged = 1;
 };
 
+/**
+ * Take a reading of the front panel buttons and map it to a button number.
+ * Requiring three consecutive identical readings before accepting the result.
+*/
 byte GetSwSet1ButtonNumber()
+{
+    int numberOfConsecutiveButtonResultsRequired = 3;
+    int numberOfConsecutiveButtonResults = 0;
+    int previousButtonNumber = -1;
+
+    while(numberOfConsecutiveButtonResults < numberOfConsecutiveButtonResultsRequired) {
+        int currentButtonNumber = GetSwSet1ButtonNumberAtInstant();
+
+        if (currentButtonNumber == previousButtonNumber) {
+            numberOfConsecutiveButtonResults = numberOfConsecutiveButtonResults + 1;
+        } else {
+            previousButtonNumber = currentButtonNumber;
+        }
+    }
+
+    return currentButtonNumber;
+}
+
+byte GetSwSet1ButtonNumberAtInstant()
 // Take a reading of the front panel buttons and map it to a button number
 // (0..4)
 {
