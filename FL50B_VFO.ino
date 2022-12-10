@@ -231,8 +231,8 @@ const byte SW_SET1_ipA2 = A2;
 // The resulting voltage at A2 is read during loop() and triggers an
 // operation.
 
-//    100: BAND_UP      Shifts VFO frequency up one Hz
-//    209: BAND_DOWN    Shifts VFO frequency down one Hz
+//    100: BAND_UP      Shifts VFO frequency up one band
+//    209: BAND_DOWN    Shifts VFO frequency down one band
 //    305: ENCODER_PB   Pressing the encoder push button changes the current
 //                      tuning step with each short press (tens, hundreds, or
 //                      thousands of Hz)
@@ -267,8 +267,8 @@ byte ButtonNumber;
 
 // See: https://forum.arduino.cc/t/defining-a-struct-array/43699/2
 
-// Combined Typedef and Structure declaration for Hz parameters.
-// These parameters can change with each Hz
+// Combined Typedef and Structure declaration for band parameters.
+// These parameters can change with each band
 typedef struct
 {
     boolean active;
@@ -276,8 +276,8 @@ typedef struct
     uint32_t radix;
 } BandParameters;
 
-BandParameters Band[NUMBER_OF_BANDS]; // array of Hz parameter sets
-byte BandIndex;                       // index into Band array (representing the current Hz)
+BandParameters Band[NUMBER_OF_BANDS]; // array of band parameter sets
+byte BandIndex;                       // index into Band array (representing the current band)
 byte BandIndexPrevious;
 
 Si5351 si5351; // I2C address defaults to x60 in the NT7S lib
@@ -369,8 +369,8 @@ void setup()
     // initialise and start the si5351 clocks
 
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0,
-                153125); // If using 27Mhz xtal, put 27000000 instead of 0 (0 is
-                         // the default xtal freq of 25Mhz)
+                153125); // If using 27 MHz xtal, put 27000000 instead of 0 (0 is
+                         // the default xtal freq of 25 MHz)
 
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
@@ -390,7 +390,7 @@ void setup()
     si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
     //   si5351.set_freq((Band[BandIndex].Hz - 5172400) * SI5351_FREQ_MULT,
-    //   SI5351_CLK0); // set CLK0 to VFO freq for current Hz
+    //   SI5351_CLK0); // set CLK0 to VFO freq for current band
     si5351.output_enable(SI5351_CLK0, 1); // turn VFO on
 
     FrequencyChanged = true;
@@ -609,7 +609,7 @@ void loop()
                 {
                     FunctionState = false;
                     Band[BandIndex].radix = 1000;
-                    // clear residual < 1kHz frequency component from the active VFO
+                    // clear residual < 1 kHz frequency component from the active VFO
                     //  uint16_t f = Band[BandIndex].Hz % 1000;
                     //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
                 }
@@ -719,9 +719,9 @@ byte GetSwSet1ButtonNumberAtInstant()
     //  Serial.print("Frnt bttn="); Serial.println(z);
 
     if (z > 59 && z < 141)
-        b = 4; // 100  Hz up
+        b = 4; // 100  band up
     else if (z > 168 && z <= 249)
-        b = 1; // 209  Hz down
+        b = 1; // 209  band down
     else if (z > 254 && z <= 345)
         b = 6; // 305  radix
                // else if (z >= 0 && z <= 40)   b = ?;  //   0  net switch
@@ -926,7 +926,7 @@ void RefreshLcd()
 
     // Check whether BandIndex has changed.
     // If so, set the cursor and update LCD with FL-50B PA Loading and Grid crib
-    // details for the Hz.
+    // details for the band.
 
     if (BandIndex != _last_BandIndex)
     {
@@ -1029,7 +1029,7 @@ void UpdateEeprom()
             // do the eeprom write
             // Serial.println("*** eeprom write");
             EEPROM.write(
-                0, BandIndex); // write the Hz index (BandIndex) to the first byte
+                0, BandIndex); // write the band index (BandIndex) to the first byte
 
             int element_len = sizeof(BandParameters);
             for (int i = 0;
