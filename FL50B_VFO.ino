@@ -231,8 +231,8 @@ const byte SW_SET1_ipA2 = A2;
 // The resulting voltage at A2 is read during loop() and triggers an
 // operation.
 
-//    100: BAND_UP      Shifts VFO frequency up one band
-//    209: BAND_DOWN    Shifts VFO frequency down one band
+//    100: BAND_UP      Shifts VFO frequency up one Hz
+//    209: BAND_DOWN    Shifts VFO frequency down one Hz
 //    305: ENCODER_PB   Pressing the encoder push button changes the current
 //                      tuning step with each short press (tens, hundreds, or
 //                      thousands of Hz)
@@ -267,17 +267,17 @@ byte ButtonNumber;
 
 // See: https://forum.arduino.cc/t/defining-a-struct-array/43699/2
 
-// Combined Typedef and Structure declaration for 'band parameter set' records.
-// These parameters can change with each band
+// Combined Typedef and Structure declaration for Hz parameters.
+// These parameters can change with each Hz
 typedef struct
 {
     boolean active;
-    uint32_t band;
+    uint32_t Hz;
     uint32_t radix;
-} BandSet_type;
+} BandParameters;
 
-BandSet_type BandSet[NUMBER_OF_BANDS]; // array of band parameter sets
-byte BandIndex;                        // index into BandSet array (representing the current band)
+BandParameters Band[NUMBER_OF_BANDS]; // array of Hz parameter sets
+byte BandIndex;                       // index into Band array (representing the current Hz)
 byte BandIndexPrevious;
 
 Si5351 si5351; // I2C address defaults to x60 in the NT7S lib
@@ -349,7 +349,7 @@ void setup()
     PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
     sei();
 
-    // load up BandSet array from EEPROM
+    // load up Band array from EEPROM
 
     BandIndex = EEPROM.read(0);
     Serial.print("setup() eeprom: BandIndex=");
@@ -359,10 +359,10 @@ void setup()
                        // run (EEPROM update)
     BandIndexPrevious = BandIndex;
 
-    int element_len = sizeof(BandSet_type);
+    int element_len = sizeof(BandParameters);
     for (int i = 0; i < NUMBER_OF_BANDS;)
     {
-        EEPROM.get(1 + (i * element_len), BandSet[i]);
+        EEPROM.get(1 + (i * element_len), Band[i]);
         i = i + 1;
     };
 
@@ -376,21 +376,21 @@ void setup()
 
     // VFO
     Serial.print("VFO=");
-    Serial.println(BandSet[BandIndex].band);
+    Serial.println(Band[BandIndex].Hz);
     volatile uint32_t f;
 
     {
-        if ((BandSet[BandIndex].band) >= 10000000)
-            f = BandSet[BandIndex].band - 5172400;
+        if ((Band[BandIndex].Hz) >= 10000000)
+            f = Band[BandIndex].Hz - 5172400;
 
         else
-            f = BandSet[BandIndex].band + 5172400;
+            f = Band[BandIndex].Hz + 5172400;
     }
 
     si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
-    //   si5351.set_freq((BandSet[BandIndex].band - 5172400) * SI5351_FREQ_MULT,
-    //   SI5351_CLK0); // set CLK0 to VFO freq for current band
+    //   si5351.set_freq((Band[BandIndex].Hz - 5172400) * SI5351_FREQ_MULT,
+    //   SI5351_CLK0); // set CLK0 to VFO freq for current Hz
     si5351.output_enable(SI5351_CLK0, 1); // turn VFO on
 
     FrequencyChanged = true;
@@ -418,11 +418,11 @@ void loop()
         volatile uint32_t f;
 
         {
-            if ((BandSet[BandIndex].band) >= 10000000)
-                f = BandSet[BandIndex].band - 5172400;
+            if ((Band[BandIndex].Hz) >= 10000000)
+                f = Band[BandIndex].Hz - 5172400;
 
             else
-                f = BandSet[BandIndex].band + 5172400;
+                f = Band[BandIndex].Hz + 5172400;
         }
 
         si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
@@ -492,7 +492,7 @@ void loop()
                 Serial.println("<B4>BAND UP");
                 //               Serial.print("B4 BandIndex="); Serial.print(BandIndex);
                 //               Serial.print(" VFO=");
-                //               Serial.println(BandSet[BandIndex].band);
+                //               Serial.println(Band[BandIndex].Hz);
                 int BandIndexPrevious = BandIndex;
                 if (BandIndex == (NUMBER_OF_BANDS - 1))
                     BandIndex = 0;
@@ -501,7 +501,7 @@ void loop()
 
                 //               Serial.print("Aft BandIndex=");
                 //               Serial.print(BandIndex); Serial.print(" VFO=");
-                //               Serial.println(BandSet[BandIndex].band);
+                //               Serial.println(Band[BandIndex].Hz);
             }
         }
         else
@@ -541,61 +541,61 @@ void loop()
 
 #if defined(SP_V) or defined(SP_6) or defined(SP_8) or defined(SP_9) or \
     defined(SP_11)
-            switch (BandSet[BandIndex].radix)
+            switch (Band[BandIndex].radix)
             {
             case 10: {
-                BandSet[BandIndex].radix = 100;
+                Band[BandIndex].radix = 100;
             }
             break;
 
     #ifdef SP_11
             case 100: {
-                BandSet[BandIndex].radix = 10;
+                Band[BandIndex].radix = 10;
             }
             break;
 
     #else
 
             case 100: {
-                BandSet[BandIndex].radix = 1000;
+                Band[BandIndex].radix = 1000;
                 // clear residual < 1kHz frequency component from the active VFO
-                //  uint16_t f = BandSet[BandIndex].band % 1000;
-                //  BandSet[BandIndex].band =  BandSet[BandIndex].band - f;
+                //  uint16_t f = Band[BandIndex].Hz % 1000;
+                //  Band[BandIndex].Hz =  Band[BandIndex].Hz - f;
             }
             break;
     #endif
 
             case 1000: {
-                BandSet[BandIndex].radix = 100;
+                Band[BandIndex].radix = 100;
             }
             break;
 
             case 10000: {
-                BandSet[BandIndex].radix = 1000;
+                Band[BandIndex].radix = 1000;
             }
             break;
             }
 #else
             // default radix increment/decrement behaviour...
-            switch (BandSet[BandIndex].radix)
+            switch (Band[BandIndex].radix)
             {
             case 10: {
                 if (!FunctionState)
                 {
                     // change radix up
-                    BandSet[BandIndex].radix = 10000;
+                    Band[BandIndex].radix = 10000;
                     // clear residual < 1kHz frequency component from the active VFO
-                    //  uint16_t f = BandSet[BandIndex].band % 1000;
-                    //  BandSet[BandIndex].band = BandSet[BandIndex].band - f;
+                    //  uint16_t f = Band[BandIndex].Hz % 1000;
+                    //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
                 }
                 else
                 {
                     FunctionState = false;
                     // change radix down
-                    BandSet[BandIndex].radix = 100;
+                    Band[BandIndex].radix = 100;
                     // clear residual < 100Hz frequency component from the active VFO
-                    //  uint16_t f = BandSet[BandIndex].band % 100;
-                    //  BandSet[BandIndex].band =  BandSet[BandIndex].band  - f;
+                    //  uint16_t f = Band[BandIndex].Hz % 100;
+                    //  Band[BandIndex].Hz =  Band[BandIndex].Hz  - f;
                 }
             }
             break;
@@ -603,15 +603,15 @@ void loop()
             case 100: {
                 if (!FunctionState)
                 {
-                    BandSet[BandIndex].radix = 10;
+                    Band[BandIndex].radix = 10;
                 }
                 else
                 {
                     FunctionState = false;
-                    BandSet[BandIndex].radix = 1000;
+                    Band[BandIndex].radix = 1000;
                     // clear residual < 1kHz frequency component from the active VFO
-                    //  uint16_t f = BandSet[BandIndex].band % 1000;
-                    //  BandSet[BandIndex].band = BandSet[BandIndex].band - f;
+                    //  uint16_t f = Band[BandIndex].Hz % 1000;
+                    //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
                 }
             }
             break;
@@ -619,12 +619,12 @@ void loop()
             case 1000: {
                 if (!FunctionState)
                 {
-                    BandSet[BandIndex].radix = 100;
+                    Band[BandIndex].radix = 100;
                 }
                 else
                 {
                     FunctionState = false;
-                    BandSet[BandIndex].radix = 10000;
+                    Band[BandIndex].radix = 10000;
                 }
                 break;
             }
@@ -632,12 +632,12 @@ void loop()
             case 10000: {
                 if (!FunctionState)
                 {
-                    BandSet[BandIndex].radix = 1000;
+                    Band[BandIndex].radix = 1000;
                 }
                 else
                 {
                     FunctionState = false;
-                    BandSet[BandIndex].radix = 10;
+                    Band[BandIndex].radix = 10;
                 }
                 break;
             }
@@ -661,15 +661,15 @@ void ChangeFrequency(int dir)
 
     if (dir == 1) // Increment
     {
-        BandSet[BandIndex].band =
-            BandSet[BandIndex].band + BandSet[BandIndex].radix;
+        Band[BandIndex].Hz =
+            Band[BandIndex].Hz + Band[BandIndex].radix;
     }
     else
     {
         if (dir == -1) // Decrement
 
-            BandSet[BandIndex].band =
-                BandSet[BandIndex].band - BandSet[BandIndex].radix;
+            Band[BandIndex].Hz =
+                Band[BandIndex].Hz - Band[BandIndex].radix;
     };
 
     FrequencyChanged = 1;
@@ -719,9 +719,9 @@ byte GetSwSet1ButtonNumberAtInstant()
     //  Serial.print("Frnt bttn="); Serial.println(z);
 
     if (z > 59 && z < 141)
-        b = 4; // 100  band up
+        b = 4; // 100  Hz up
     else if (z > 168 && z <= 249)
-        b = 1; // 209  band down
+        b = 1; // 209  Hz down
     else if (z > 254 && z <= 345)
         b = 6; // 305  radix
                // else if (z >= 0 && z <= 40)   b = ?;  //   0  net switch
@@ -891,7 +891,7 @@ void RefreshLcd()
     // Update the LCD
     uint16_t f, g;
     uint32_t band_l;
-    band_l = BandSet[BandIndex].band;
+    band_l = Band[BandIndex].Hz;
 
     // Check whether BandIndex has changed.  If so, set the cursor position and
     // update LCD with wavelength.
@@ -926,7 +926,7 @@ void RefreshLcd()
 
     // Check whether BandIndex has changed.
     // If so, set the cursor and update LCD with FL-50B PA Loading and Grid crib
-    // details for the band.
+    // details for the Hz.
 
     if (BandIndex != _last_BandIndex)
     {
@@ -997,7 +997,7 @@ void RefreshLcd()
 
     byte CursorPosition = 14;
 
-    switch (BandSet[BandIndex].radix)
+    switch (Band[BandIndex].radix)
     {
     case 10:
         lcd.setCursor(CursorPosition, 0);
@@ -1029,13 +1029,13 @@ void UpdateEeprom()
             // do the eeprom write
             // Serial.println("*** eeprom write");
             EEPROM.write(
-                0, BandIndex); // write the band index (BandIndex) to the first byte
+                0, BandIndex); // write the Hz index (BandIndex) to the first byte
 
-            int element_len = sizeof(BandSet_type);
+            int element_len = sizeof(BandParameters);
             for (int i = 0;
-                 i < NUMBER_OF_BANDS;) // write each element of the BandSet array
+                 i < NUMBER_OF_BANDS;) // write each element of the Band array
             {
-                EEPROM.put(1 + (i * element_len), BandSet[i]);
+                EEPROM.put(1 + (i * element_len), Band[i]);
                 i = i + 1;
             }
             EepromUpdatedSinceLastFrequencyChange = true;
