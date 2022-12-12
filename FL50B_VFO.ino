@@ -142,11 +142,15 @@ unit testing.  Class is the code, Object is the instance.
 // ------------------------------------------------------------------------------------------------------------------
 // LIBRARIES
 // ------------------------------------------------------------------------------------------------------------------
-#include <EEPROM.h> // IDE Standard
-// #include <PCF8574.h> // PCF8574 library by Rob Tillaart 0.3.2  https://github.com/RobTillaart/PCF8574
-#include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
-#include <Wire.h>   // IDE Standard
-#include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
+#include <EEPROM.h>  // IDE Standard
+#include <Rotary.h>  // Ben Buxton https://github.com/brianlow/Rotary
+#include <Wire.h>    // IDE Standard
+#include <si5351.h>  // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
+#include <iom328p.h> // This header file defines the variables for the Pin Change Interrupt service
+                     // such as PCICR, PCIE2, PCMSK2, PCINT18, and PCINT19 and keeps
+                     // Intellisense in the C/C++ Extension to VSCode happy if specifically
+                     // included here.  Also added the following path to c_cpp_properties.json:
+                     // "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include\\avr"
 
 // ------------------------------------------------------------------------------------------------------------------
 // Liquid Crystal Display (LCD) declarations and initialisations
