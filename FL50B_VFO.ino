@@ -269,11 +269,11 @@ unsigned long Txlo = 5712400; // Frequency of local oscillator in FL-50B in Hz. 
 
 byte ButtonNumber; // Push button identifier
 
-
 // See: https://forum.arduino.cc/t/defining-a-struct-array/43699/2
 
+// ----------------------------------------------------------------------------------------------
 // Combined Typedef and Structure declaration for band parameters.
-// These parameters can change with each band
+// These parameters apply on a per band basis (Status; Frequency in Hz; Step Size)
 typedef struct
 {
     boolean active;
@@ -281,28 +281,25 @@ typedef struct
     uint32_t radix;
 } BandParameters;
 
-BandParameters Band[NUMBER_OF_BANDS]; // array of band parameter sets
-byte BandIndexCurrent;                // index into Band array (representing the current band)
-byte BandIndexPrevious;
-
-// I2C device addresses
-// ---------------------------
-// si5351  x60
-
+// ----------------------------------------------------------------------------------------------
+// Array of BandParameters, one set per band
+BandParameters Band[NUMBER_OF_BANDS];
 
 // ----------------------------------------------------------------------------------------------
+// Variables for index into Band array
+byte BandIndexCurrent;
+byte BandIndexPrevious;
 
-Si5351 si5351; // I2C address defaults to x60 in the NT7S si5351 library
-
+// ----------------------------------------------------------------------------------------------
+// Initialisation of Si5351 DDS IC.  I2C address defaults to x60 in the NT7S si5351 library
+Si5351 si5351;
 
 // ----------------------------------------------------------------------------------------------
 // Variables for reading the two inputs that determine rotary encoder movement and direction
-Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2); 
+Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
 
 bool FunctionState = false;
 // if true, the next button pressed is interpreted as a special function button
-
-
 
 // ----------------------------------------------------------------------------------------------
 //variables for controlling EEPROM writes
@@ -310,9 +307,8 @@ unsigned long LastFrequencyChangeTimer;
 bool EepromUpdatedSinceLastFrequencyChange;
 bool FrequencyChanged = false;
 
-
 // ----------------------------------------------------------------------------------------------
-// Interrupt Service Routine (ISR) for rotary encoder frequency change 
+// Interrupt Service Routine (ISR) for reading rotary encoder
 ISR(PCINT2_vect)
 {
     unsigned char result = r.process();
@@ -329,52 +325,69 @@ ISR(PCINT2_vect)
 
 void setup()
 {
-    Serial.begin(
-        9600);    // Sets the serial comms data rate in bits per second (baud)
-    Wire.begin(); // Initiates the Wire library and connects the I2C bus
+    // ----------------------------------------------------------------------------------------------
+    // Set the serial communications data rate in bits per second (baud)
+    Serial.begin(9600);
 
-    Serial.println("FL-50B VFO "); // Print project name to console
+    // ----------------------------------------------------------------------------------------------
+    // Initialise Wire library to connect the I2C bus
+    Wire.begin();
 
-    lcd.begin(16,
-              2);            // Initialise LCD and define device type (16 columns and 2 rows)
-    lcd.print("FL-50B VFO"); // Display the project name
+    // ----------------------------------------------------------------------------------------------
+    // Print project name to concole
+    Serial.println("FL-50B VFO ");
+
+    // ----------------------------------------------------------------------------------------------
+    // Initialise LCD with device type (16 columns and 2 rows)
+    lcd.begin(16, 2);
+
+    // ----------------------------------------------------------------------------------------------
+    // Display project name for 2 seconds, then clear it
+    lcd.print("FL-50B VFO");
     delay(2000);
-    lcd.clear(); // Clear the display
+    lcd.clear();
 
-    lcd.print("Build V01.05")
+    // ----------------------------------------------------------------------------------------------
+    // Display version number (first row) and version date (second row) for 2 seconds, then clear it
+    lcd.print("Build V01.05");
+    lcd.setCursor(0, 1);
+    lcd.print("09/12/2022");
+    /
+        delay(2000);
+    lcd.clear();
 
-        ;                    // Display the Build information
-    lcd.setCursor(0, 1);     // Set cursor to first column, second row
-    lcd.print("09/12/2022"); // Display version date.
-    delay(2000);
-    lcd.clear(); // Clear the display
-
-    lcd.print("Steve Rawlings "); // Display Author
-    lcd.setCursor(0, 1);          // Set cursor to first column, second row
+    // ----------------------------------------------------------------------------------------------
+    // Display author details for 2 seconds, then clear it
+    lcd.print("Steve Rawlings ");
+    lcd.setCursor(0, 1);
     lcd.print("G4ALG ");
     delay(2000);
-    lcd.clear(); // Clear the display
+    lcd.clear();
 
-    lcd.cursor(); // Show the underscore cursor.  Preparation for subsequent
-    // use of the display.
+    // ----------------------------------------------------------------------------------------------
+    // Prepare for subsequent use of the LCD and show underscore cursor.
+    lcd.cursor();
 
-    // Set digital and analogue pins
+    // ----------------------------------------------------------------------------------------------
+    // Set pinMode for Analogue A2 input (Switch Set 1) to pull up.
+    pinMode(SW_SET1_ipA2, INPUT_PULLUP);
 
-    pinMode(SW_SET1_ipA2, INPUT_PULLUP); // switch bank is Pull-up
-
-    PCICR |= (1 << PCIE2); // Enable Pin Change Interrupt Control Register for the
-                           // encoder
+    // ----------------------------------------------------------------------------------------------
+    // Initialise Pin Change Interrupt Control Register for rotary encoder
+    PCICR |= (1 << PCIE2);
     PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
     sei();
 
-    // load up Band array from EEPROM
-
+    // ----------------------------------------------------------------------------------------------
+    // Load Band array from EEPROM
     BandIndexCurrent = EEPROM.read(0);
     Serial.print("setup() eeprom: BandIndex=");
     Serial.println(BandIndexCurrent);
+
+    // ----------------------------------------------------------------------------------------------
+    // Allow for an (unlikely) reduction in NUMBER_OF_BANDS since last EEPROM update
     if (BandIndexCurrent >= NUMBER_OF_BANDS)
-        BandIndexCurrent = 1; // in case NUMBER_OF_BANDS has been reduced since the last
-                              // run (EEPROM update)
+        BandIndexCurrent = 1;
     BandIndexPrevious = BandIndexCurrent;
 
     int element_len = sizeof(BandParameters);
@@ -384,19 +397,23 @@ void setup()
         i = i + 1;
     };
 
-    // initialise and start the si5351 clocks
-
-    si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0,
-                153125); // If using 27 MHz xtal, put 27000000 instead of 0 (0 is
-                         // the default xtal freq of 25 MHz)
-
+    // ----------------------------------------------------------------------------------------------
+    // Initialise and start the si5351 clocks.  Assumes the use of the default 25 MHz quartz crystal
+    si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 153125);
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
-    // VFO
-    Serial.print("VFO=");
+    // ----------------------------------------------------------------------------------------------
+    // Print current transmit frequency to console
+    Serial.print("Tx Frequency = ");
     Serial.println(Band[BandIndexCurrent].Hz);
+
+    // ----------------------------------------------------------------------------------------------
+    // Declare variable for actual frequency to be generated for a selected transmit frequency
     volatile uint32_t f;
 
+    // ----------------------------------------------------------------------------------------------
+    // Algorithm for determining actual VFO frequency to be generated for the transmit
+    // frequency currently displayed on the LCD
     {
         if ((Band[BandIndexCurrent].Hz) >= 10000000)
             f = Band[BandIndexCurrent].Hz - 5172400;
@@ -405,12 +422,16 @@ void setup()
             f = Band[BandIndexCurrent].Hz + 5172400;
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // Initialise Si5351 frequency and output channel ('clock')
     si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
-    //   si5351.set_freq((Band[BandIndex].Hz - 5172400) * SI5351_FREQ_MULT,
-    //   SI5351_CLK0); // set CLK0 to VFO freq for current band
-    si5351.output_enable(SI5351_CLK0, 1); // turn VFO on
+    // ----------------------------------------------------------------------------------------------
+    // Turn on the required output channel (CLK0)
+    si5351.output_enable(SI5351_CLK0, 1);
 
+    // ----------------------------------------------------------------------------------------------
+    // Initialise variables relating to frequency change events
     FrequencyChanged = true;
     LastFrequencyChangeTimer = millis();
     EepromUpdatedSinceLastFrequencyChange = false;
