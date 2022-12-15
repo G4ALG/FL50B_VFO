@@ -8,13 +8,13 @@ The contents of this file are grouped as follows:
 Introduction
   Version History
   About this program
-  Acknowlements
+  Acknowledgements
   Hardware Connections
 Coding Standards
 Global declarations and initialisations
 Setup()
 Loop()
-Functions, in alphabetical order
+Functions
 
 
 // ==============================================================================================
@@ -67,8 +67,8 @@ Band      Preset Transmit Frequency            VFO Frequency
  80                 3.560                   Transmit Frequency + 5.1724
 
 
-Acknowlements
--------------
+Acknowledgments
+---------------
 This work is largely based on a Universal VFO Controller program that was originally written 
 by Paul Taylor, VK3HN (https://vk3hn.wordpress.com/).  In writing his program which targets 
 Ashar Farhan VU2ESE's Arduino Nano/si5351 module ('Raduino'), Paul Taylor recognised the support 
@@ -83,35 +83,48 @@ UNQUOTE
 Hardware connections
 --------------------
 
-                    LCD to Arduino Nano Connections
-                    -------------------------------
-LCD RS (Register Select)  
-Pin 4 on LCD module connects to Pin 11 on Arduino Nano module (D8 output) 
+           LCD module to Arduino Nano module Connections
+           ---------------------------------------------
+LCD RS (Register Select)    ____________     Arduino Nano D8 output 
+                   Pin 4                     Pin 11 
 
-LCD E (Enable)            
-Pin 6 on LCD module connects to Pin 12 on Arduino Nano module (D9 output) 
+          LCD E (Enable)    _____________    Arduino Nano D9 output       
+                   Pin 6                     Pin 12 
 
-LCD D4                    
-Pin 11 on LCD module connects to Pin 13 on Arduino Nano module (D10 output) 
+                  LCD D4    _____________    Arduino Nano D10 output
+                  Pin 11                     Pin 13  
 
-LCD D5 
-Pin 12 on LCD module connects to Pin 14 on Arduino Nano module (D11 output) 
+                  LCD D5    _____________    Arduino Nano D11 output
+                  Pin 12                     Pin 14
 
-LCD D6 
-Pin 13 on LCD module connects to Pin 15 on Arduino Nano module (D12 output) 
+                  LCD D6    _____________    Arduino Nano D12 output
+                  Pin 13                     Pin 15
 
-LCD D7 
-Pin 14 on LCD module connects to Pin 16 on Arduino Nano module (D13 output)
+                  LCD D7    _____________    Arduino Nano D13 output
+                  Pin 14                     Pin 16
 
-                                Other LCD Connections
-                                ---------------------
-LCD VSS                   Pin 1 on LCD module connects to ground
-LCD VDD (VCC)             Pin 2 on LCD module connects to +5V
-LCD VD                    Pin 3 on LCD module connects to wiper of 10 k
-                          potentiometer for setting contrast 
-LCD R/W                   Pin 5 on LCD module connects to ground 
-LCD LED A (+)             Pin 15 on LCD module connects via 220 ohm resistor to +5V 
-LCD LED K (-)             Pin 16 on LCD module connects to ground
+
+
+                      Other LCD Connections
+                      ---------------------
+
+                 LCD VSS    _____________    Ground
+                   Pin 1                     
+
+            LCD VDD (VCC)   _____________    + 5V        
+                    Pin 2
+
+                   LCD VD   _____________     Wiper of 10 k potentiometer 
+                    Pin 3                     for setting contrast
+
+                  LCD R/W   _____________     Ground
+                    Pin 5                     
+
+             LCD LED A (+)   _____________    via 220 ohm resistor to +5V 
+                    Pin 15                    
+
+             LCD LED K (-)   _____________    Ground
+                    Pin 16                    
 
 
 Further details of the hardware and the circuit diagram can be found at:
