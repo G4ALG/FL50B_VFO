@@ -302,7 +302,7 @@ bool FunctionState = false;
 // if true, the next button pressed is interpreted as a special function button
 
 // ----------------------------------------------------------------------------------------------
-//variables for controlling EEPROM writes
+// Declare variables for controlling EEPROM writes
 unsigned long LastFrequencyChangeTimer;
 bool EepromUpdatedSinceLastFrequencyChange;
 bool FrequencyChanged = false;
@@ -352,8 +352,7 @@ void setup()
     lcd.print("Build V01.05");
     lcd.setCursor(0, 1);
     lcd.print("09/12/2022");
-    /
-        delay(2000);
+    delay(2000);
     lcd.clear();
 
     // ----------------------------------------------------------------------------------------------
