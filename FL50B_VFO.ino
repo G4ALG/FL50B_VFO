@@ -67,8 +67,8 @@ Band      Preset Transmit Frequency            VFO Frequency
  80                 3.560                   Transmit Frequency + 5.1724
 
 
-Acknowledgments
----------------
+Acknowledgements
+----------------
 This work is largely based on a Universal VFO Controller program that was originally written 
 by Paul Taylor, VK3HN (https://vk3hn.wordpress.com/).  In writing his program which targets 
 Ashar Farhan VU2ESE's Arduino Nano/si5351 module ('Raduino'), Paul Taylor recognised the support 
@@ -184,21 +184,24 @@ Clarity of code
 This program avoids the use of shorthand C++ statements.  For example, 'i = i + 1', rather than 'i++'
 
 */
+
 // ==============================================================================================
 //  Global declarations and initialisations
 // ==============================================================================================
 
-// ------------------------------------------------------------------------------------------------------------------
-// Libraries
-// ------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
+//  Libraries
+// ----------------------------------------------------------------------------------------------
+
 #include <EEPROM.h> // IDE Standard
 #include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
 #include <Wire.h>   // IDE Standard
 #include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
 
-// ------------------------------------------------------------------------------------------------------------------
-// Liquid Crystal Display (LCD) declarations and initialisations
-// ------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
+//  Liquid Crystal Display
+// ----------------------------------------------------------------------------------------------
+
 #include <LiquidCrystal.h> // IDE Standard
 
 // Initialise the LiquidCrystal library by defining the interface between the
@@ -217,62 +220,55 @@ uint32_t _last_freq = -1;
 LiquidCrystal
     lcd(LCD_RS_op8, LCD_E_op9, LCD_D4_op10, LCD_D5_op11, LCD_D6_op12, LCD_D7_op13);
 
-// ------------------------------------------------------------------------------------------------------------------
-// Arduino Nano digital pin assignments
-// ------------------------------------------------------------------------------------------------------------------
-//
+// ----------------------------------------------------------------------------------------------
+//  Arduino Nano digital pin assignments
+// ----------------------------------------------------------------------------------------------
+
 //                 0       Serial communications bus
 //                 1       Serial communications bus
 
 const byte ENCODER_A_ip2 = 2; // input from encoder pin A, pin D2 pulsed low
 const byte ENCODER_B_ip3 = 3; // input from encoder pin B, pin D3 pulsed low
 
-// This project uses a 16 x 2 (1602) LCD module
-// Perhaps create an object for 'LCD'?
+// ----------------------------------------------------------------------------------------------
+//  Arduino Nano analogue pin assignments
+// ----------------------------------------------------------------------------------------------
 
-// ------------------------------------------------------------------------------------------------------------------
-// Arduino Nano analogue pin assignments
-// ------------------------------------------------------------------------------------------------------------------
-//
 const byte SW_SET1_ipA2 = A2;
 
-// Input from Switch Set 1 selects one of 10 pull down resistors.
-// The resulting voltage at A2 is read during loop() and triggers an
-// operation.
+/*
+SW_SET1 is the input from Switch Set 1 which uses up to ten momemtary push button switches to select 
+an associated pull down resistor to form a potential divider with a 470 ohm rersistor connected to + 5V.
+The resulting voltage at A2 is read during loop() and may trigger an operation.   Only three push 
+buttons are used for this project (for Band Up, Band Down, and Frequency Step Size).
+*/
 
-//    100: BAND_UP      Shifts VFO frequency up one band
-//    209: BAND_DOWN    Shifts VFO frequency down one band
-//    305: ENCODER_PB   Pressing the encoder push button changes the current
-//                      tuning step with each short press (tens, hundreds, or
-//                      thousands of Hz)
+//    100: BAND_UP      Shifts VFO frequency up one band (3.5 > 7 > 14 > 21 > 28 MHz, then 3.5 etc.)
+//    209: BAND_DOWN    Shifts VFO frequency down one band (28 > 21 > 14 > 7 > 3.5 MHz, then 28 etc.)
+//    305: ENCODER_PB   Pressing the rotary encoder push button changes the tuning step size with each
+//                      short press (10^4 >  10^3  > 10^2 > tens of Hz, then 10^4 etc.)
 //
 //
 //                A3    Not used
 //                A4    Used for SDA
 //                A5    Used for SCL
 
-// ------------------------------------------------------------------------------------------------------------------
-// User Preferences
-// ------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
+//  User preferences
+// ----------------------------------------------------------------------------------------------
 
 const int NUMBER_OF_BANDS = 5;
 // The FL50B has five selectable bands
 
-// ------------------------------------------------------------------------------------------------------------------
-// Global Variables
-// ------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
+//  Global variables
+// ----------------------------------------------------------------------------------------------
 
-// Frequency Shift
-// ---------------------------
-unsigned long Txlo = 5712400; // Frequency of local oscillator in FR-50B in Hz
+unsigned long Txlo = 5712400; // Frequency of local oscillator in FL-50B in Hz.  The VFO frequency
+                              // generated by this project needs to be shifted by <Txlo> Hz.
 
-// Push-button
-// ---------------------------
-byte ButtonNumber;
+byte ButtonNumber; // Push button identifier
 
-// I2C device addresses
-// ---------------------------
-// si5351  x60
 
 // See: https://forum.arduino.cc/t/defining-a-struct-array/43699/2
 
@@ -289,21 +285,34 @@ BandParameters Band[NUMBER_OF_BANDS]; // array of band parameter sets
 byte BandIndexCurrent;                // index into Band array (representing the current band)
 byte BandIndexPrevious;
 
-Si5351 si5351; // I2C address defaults to x60 in the NT7S lib
-Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
+// I2C device addresses
+// ---------------------------
+// si5351  x60
+
+
+// ----------------------------------------------------------------------------------------------
+
+Si5351 si5351; // I2C address defaults to x60 in the NT7S si5351 library
+
+
+// ----------------------------------------------------------------------------------------------
+// Variables for reading the two inputs that determine rotary encoder movement and direction
+Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2); 
 
 bool FunctionState = false;
 // if true, the next button pressed is interpreted as a special function button
 
-// ------------------------------------------------------------------------------------------------------------------
-// variables for controlling EEPROM writes
+
+
+// ----------------------------------------------------------------------------------------------
+//variables for controlling EEPROM writes
 unsigned long LastFrequencyChangeTimer;
 bool EepromUpdatedSinceLastFrequencyChange;
 bool FrequencyChanged = false;
 
-/**************************************/
-/* Interrupt service routine for encoder frequency change */
-/**************************************/
+
+// ----------------------------------------------------------------------------------------------
+// Interrupt Service Routine (ISR) for rotary encoder frequency change 
 ISR(PCINT2_vect)
 {
     unsigned char result = r.process();
