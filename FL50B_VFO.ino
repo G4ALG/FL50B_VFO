@@ -298,8 +298,11 @@ Si5351 si5351;
 // Variables for reading the two inputs that determine rotary encoder movement and direction
 Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
 
-bool FunctionState = false;
-// if true, the next button pressed is interpreted as a special function button
+// ----------------------------------------------------------------------------------------------
+//  Initialise variable that will be 'true' when the secondary action associated with the next 
+//  button pressed should be initiated.
+bool SecondaryActionFlag = false;
+
 
 // ----------------------------------------------------------------------------------------------
 // Declare variables for controlling EEPROM writes
@@ -449,13 +452,14 @@ void loop()
     UpdateEeprom();
     RefreshLcd();
 
-    // Update the display if the frequency has been changed (and we are not
-    // transmitting)
-    // if (!TxState && FrequencyChanged)                //  'and' changed to &&
-    // what is the and operator doing????
     {
+        // ----------------------------------------------------------------------------------------------
+        // Declare variable for actual frequency to be generated for a selected transmit frequency
         volatile uint32_t f;
 
+        // ----------------------------------------------------------------------------------------------
+        // Algorithm for determining actual VFO frequency to be generated for the transmit
+        // frequency currently displayed on the LCD
         {
             if ((Band[BandIndexCurrent].Hz) >= 10000000)
                 f = Band[BandIndexCurrent].Hz - 5172400;
@@ -464,31 +468,38 @@ void loop()
                 f = Band[BandIndexCurrent].Hz + 5172400;
         }
 
+        // ----------------------------------------------------------------------------------------------
+        // Initialise Si5351 frequency and output channel ('clock')
         si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
+        // ----------------------------------------------------------------------------------------------
+        // Initialise variables relating to frequency change events
         FrequencyChanged = false;
         LastFrequencyChangeTimer = millis();
         EepromUpdatedSinceLastFrequencyChange = false;
-    } // endif FrequencyChanged
+    }
 
-    //------------------------------------------------------------------------
-    // if any of the buttons have been pressed...
+    //-----------------------------------------------------------------------------------------------
+    // Initialise variables for evaluating characteristics of button press
     bool ButtonHeld = false;
     unsigned long ButtonPressedDuration = millis();
 
+    //-----------------------------------------------------------------------------------------------
+    // Store most recent Switch Set 1 button number to have been pressed
     ButtonNumber = GetSwSet1ButtonNumber();
 
+    //-----------------------------------------------------------------------------------------------
+    // Wait until the Switch Set 1 button has been released
     while (ButtonNumber > 0 && GetSwSet1ButtonNumber() > 0)
     {
         delay(5);
-        // one of the multiplexed switches is being held down - wait!
     }
 
-    // if one of the buttons was pressed (and is now released) act on it...
-
+    //-----------------------------------------------------------------------------------------------
+    // A switch Set 1 button has been pressed and released, so initiate action
     if (ButtonNumber == 1)
     {
-        if (!FunctionState)
+        if (!SecondaryActionFlag)
         {
             Serial.println("<B1>BAND DOWN");
             if (BandIndexCurrent == 0)
@@ -503,7 +514,7 @@ void loop()
         else
         {
             Serial.println("<F><B1>N/A");
-            FunctionState = false;
+            SecondaryActionFlag = false;
         };
         FrequencyChanged = true;
     };
@@ -519,7 +530,7 @@ void loop()
 
     if (ButtonNumber == 4)
     {
-        if (!FunctionState)
+        if (!SecondaryActionFlag)
         {
             if (ButtonHeld)
             {
@@ -548,7 +559,7 @@ void loop()
 
             lcd.clear();
 
-            FunctionState = false;
+            SecondaryActionFlag = false;
         }
         FrequencyChanged = true;
     }
@@ -556,8 +567,8 @@ void loop()
     if (ButtonNumber == 5)
     {
         Serial.println("<B5>Fn tgl");
-        FunctionState = !FunctionState;
-        if (FunctionState)
+        SecondaryActionFlag = !SecondaryActionFlag;
+        if (SecondaryActionFlag)
             Serial.println("Function...");
         FrequencyChanged = true;
     }
@@ -566,7 +577,7 @@ void loop()
     // Button 6: change frequency step up
 
     {
-        if (!FunctionState)
+        if (!SecondaryActionFlag)
             Serial.println("<B6>FREQUENCY STEP SIZE DOWN");
         else
             Serial.println("<F><B6>f step l");
@@ -619,7 +630,7 @@ void loop()
             switch (Band[BandIndexCurrent].radix)
             {
             case 10: {
-                if (!FunctionState)
+                if (!SecondaryActionFlag)
                 {
                     // change radix up
                     Band[BandIndexCurrent].radix = 10000;
@@ -629,7 +640,7 @@ void loop()
                 }
                 else
                 {
-                    FunctionState = false;
+                    SecondaryActionFlag = false;
                     // change radix down
                     Band[BandIndexCurrent].radix = 100;
                     // clear residual < 100Hz frequency component from the active VFO
@@ -640,13 +651,13 @@ void loop()
             break;
 
             case 100: {
-                if (!FunctionState)
+                if (!SecondaryActionFlag)
                 {
                     Band[BandIndexCurrent].radix = 10;
                 }
                 else
                 {
-                    FunctionState = false;
+                    SecondaryActionFlag = false;
                     Band[BandIndexCurrent].radix = 1000;
                     // clear residual < 1 kHz frequency component from the active VFO
                     //  uint16_t f = Band[BandIndex].Hz % 1000;
@@ -656,26 +667,26 @@ void loop()
             break;
 
             case 1000: {
-                if (!FunctionState)
+                if (!SecondaryActionFlag)
                 {
                     Band[BandIndexCurrent].radix = 100;
                 }
                 else
                 {
-                    FunctionState = false;
+                    SecondaryActionFlag = false;
                     Band[BandIndexCurrent].radix = 10000;
                 }
                 break;
             }
 
             case 10000: {
-                if (!FunctionState)
+                if (!SecondaryActionFlag)
                 {
                     Band[BandIndexCurrent].radix = 1000;
                 }
                 else
                 {
-                    FunctionState = false;
+                    SecondaryActionFlag = false;
                     Band[BandIndexCurrent].radix = 10;
                 }
                 break;
@@ -716,7 +727,7 @@ void ChangeFrequency(int dir)
 
 /**
  * Take a reading of the front panel buttons and map it to a button number.
- * Requiring three consecutive identical readings before accepting the result.
+ * Requiring 20 consecutive identical readings before accepting the result.
 */
 byte GetSwSet1ButtonNumber()
 {
