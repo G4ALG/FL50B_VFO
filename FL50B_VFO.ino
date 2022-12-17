@@ -10,10 +10,15 @@ Introduction
   About this program
   Acknowledgements
   Hardware Connections
+
 Coding Standards
+
 Global declarations and initialisations
+
 Setup()
+
 Loop()
+
 Functions
 
 
@@ -242,11 +247,16 @@ an associated pull down resistor to form a potential divider with a 470 ohm rers
 The resulting voltage at A2 is read during loop() and may trigger an operation.   Only three push 
 buttons are used for this project (for Band Up, Band Down, and Frequency Step Size).
 */
-
-//    100: BAND_UP      Shifts VFO frequency up one band (3.5 > 7 > 14 > 21 > 28 MHz, then 3.5 etc.)
-//    209: BAND_DOWN    Shifts VFO frequency down one band (28 > 21 > 14 > 7 > 3.5 MHz, then 28 etc.)
-//    305: ENCODER_PB   Pressing the rotary encoder push button changes the tuning step size with each
-//                      short press (10^4 >  10^3  > 10^2 > tens of Hz, then 10^4 etc.)
+//    ADC
+//   Value     Action                           Description
+//   -----     ------                           -----------
+//    100      BAND_UP         Shifts VFO frequency up one band
+//                               (3.5 > 7 > 14 > 21 > 28 MHz, then 3.5 etc.)
+//    209     BAND_DOWN        Shifts VFO frequency down one band
+//                               (28 > 21 > 14 > 7 > 3.5 MHz, then 28 etc.)
+//    305      REDUCE          Pressing the rotary encoder push button changes the tuning step
+//            STEP SIZE        size with each short press
+//                               (10^4 >  10^3  > 10^2 > tens of Hz, then 10^4 etc.)
 //
 //
 //                A3    Not used
@@ -288,7 +298,8 @@ BandParameters Band[NUMBER_OF_BANDS];
 // ----------------------------------------------------------------------------------------------
 // Variables for index into Band array
 byte BandIndexCurrent;
-byte BandIndexPrevious;
+// byte BandIndexPrevious;   All instances of this variable are for deletion.  It's not clear
+//                           that this variable has a purpose.
 
 // ----------------------------------------------------------------------------------------------
 // Initialisation of Si5351 DDS IC.  I2C address defaults to x60 in the NT7S si5351 library
@@ -299,16 +310,14 @@ Si5351 si5351;
 Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
 
 // ----------------------------------------------------------------------------------------------
-//  Initialise variable that will be 'true' when the secondary action associated with the next 
+//  Initialise variable that will be 'true' when the secondary action associated with the next
 //  button pressed should be initiated.
 bool SecondaryActionFlag = false;
-
 
 // ----------------------------------------------------------------------------------------------
 // Declare variables for controlling EEPROM writes
 unsigned long LastFrequencyChangeTimer;
 bool EepromUpdatedSinceLastFrequencyChange;
-bool FrequencyChanged = false;
 
 // ----------------------------------------------------------------------------------------------
 // Interrupt Service Routine (ISR) for reading rotary encoder
@@ -380,7 +389,7 @@ void setup()
     PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
     sei();
 
-    // ----------------------------------------------------------------------------------------------
+    // ------------------------------------------on----------------------------------------------------
     // Load Band array from EEPROM
     BandIndexCurrent = EEPROM.read(0);
     Serial.print("setup() eeprom: BandIndex=");
@@ -390,7 +399,7 @@ void setup()
     // Allow for an (unlikely) reduction in NUMBER_OF_BANDS since last EEPROM update
     if (BandIndexCurrent >= NUMBER_OF_BANDS)
         BandIndexCurrent = 1;
-    BandIndexPrevious = BandIndexCurrent;
+    // BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
 
     int element_len = sizeof(BandParameters);
     for (int i = 0; i < NUMBER_OF_BANDS;)
@@ -434,7 +443,6 @@ void setup()
 
     // ----------------------------------------------------------------------------------------------
     // Initialise variables relating to frequency change events
-    FrequencyChanged = true;
     LastFrequencyChangeTimer = millis();
     EepromUpdatedSinceLastFrequencyChange = false;
 }
@@ -453,11 +461,11 @@ void loop()
     RefreshLcd();
 
     {
-        // ----------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------
         // Declare variable for actual frequency to be generated for a selected transmit frequency
         volatile uint32_t f;
 
-        // ----------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------
         // Algorithm for determining actual VFO frequency to be generated for the transmit
         // frequency currently displayed on the LCD
         {
@@ -468,20 +476,19 @@ void loop()
                 f = Band[BandIndexCurrent].Hz + 5172400;
         }
 
-        // ----------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------
         // Initialise Si5351 frequency and output channel ('clock')
         si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
-        // ----------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------
         // Initialise variables relating to frequency change events
-        FrequencyChanged = false;
         LastFrequencyChangeTimer = millis();
         EepromUpdatedSinceLastFrequencyChange = false;
     }
 
     //-----------------------------------------------------------------------------------------------
     // Initialise variables for evaluating characteristics of button press
-    bool ButtonHeld = false;
+    bool ButtonHeldFlag = false;
     unsigned long ButtonPressedDuration = millis();
 
     //-----------------------------------------------------------------------------------------------
@@ -497,11 +504,13 @@ void loop()
 
     //-----------------------------------------------------------------------------------------------
     // A switch Set 1 button has been pressed and released, so initiate action
-    if (ButtonNumber == 1)
+    if (ButtonNumber == 2)
     {
         if (!SecondaryActionFlag)
         {
-            Serial.println("<B1>BAND DOWN");
+            //---------------------------------------------------------------------------------------
+            // The primary action for Button 2, Switch Set 1 is the Band Down action
+            Serial.println("<B2>BAND DOWN");
             if (BandIndexCurrent == 0)
             {
                 BandIndexCurrent = (NUMBER_OF_BANDS - 1);
@@ -516,116 +525,65 @@ void loop()
             Serial.println("<F><B1>N/A");
             SecondaryActionFlag = false;
         };
-        FrequencyChanged = true;
     };
 
-    if (ButtonNumber == 2)
-    {
-        // Button 2:
-    };
+   
+ 
 
-    if (ButtonNumber == 3)
-    {
-    };
-
-    if (ButtonNumber == 4)
+    if (ButtonNumber == 1)
     {
         if (!SecondaryActionFlag)
         {
-            if (ButtonHeld)
+            if (ButtonHeldFlag)
             {
-                Serial.println("<B4>held-Tune");
-                ButtonHeld = false;
+                Serial.println("<B4> Held");
+                // When held, Button 4 does not currently have an action defined.
+                ButtonHeldFlag = false;
             }
             else
             {
-                Serial.println("<B4>BAND UP");
-                //               Serial.print("B4 BandIndex="); Serial.print(BandIndex);
-                //               Serial.print(" VFO=");
-                //               Serial.println(Band[BandIndex].Hz);
-                int BandIndexPrevious = BandIndexCurrent;
+                //-----------------------------------------------------------------------------------
+                // The primary action for Button 1, Switch Set 1 is the Band Up action
+                Serial.println("<B1>BAND UP");
+                // int BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
                 if (BandIndexCurrent == (NUMBER_OF_BANDS - 1))
                     BandIndexCurrent = 0;
                 else
                     BandIndexCurrent = BandIndexCurrent + 1;
-
-                //               Serial.print("Aft BandIndex=");
-                //               Serial.print(BandIndex); Serial.print(" VFO=");
-                //               Serial.println(Band[BandIndex].Hz);
             }
         }
         else
         {
-
             lcd.clear();
-
             SecondaryActionFlag = false;
         }
-        FrequencyChanged = true;
     }
 
+/*
     if (ButtonNumber == 5)
     {
         Serial.println("<B5>Fn tgl");
         SecondaryActionFlag = !SecondaryActionFlag;
         if (SecondaryActionFlag)
             Serial.println("Function...");
-        FrequencyChanged = true;
     }
-
-    if (ButtonNumber == 6)
-    // Button 6: change frequency step up
+*/
+    if (ButtonNumber == 3)
+    // Button 3: change frequency step up
 
     {
         if (!SecondaryActionFlag)
-            Serial.println("<B6>FREQUENCY STEP SIZE DOWN");
+            Serial.println("<B3>FREQUENCY STEP SIZE DOWN");
         else
-            Serial.println("<F><B6>f step l");
+            Serial.println("<F><B3>f step l");
 
-        if (ButtonHeld)
+        if (ButtonHeldFlag)
         {
-            Serial.println("<B6>held -- toggle IF filters");
+            Serial.println("<B3>held -- toggle IF filters");
         }
         else
         {
 
-#if defined(SP_V) or defined(SP_6) or defined(SP_8) or defined(SP_9) or \
-    defined(SP_11)
-            switch (Band[BandIndex].radix)
-            {
-            case 10: {
-                Band[BandIndex].radix = 100;
-            }
-            break;
-
-    #ifdef SP_11
-            case 100: {
-                Band[BandIndex].radix = 10;
-            }
-            break;
-
-    #else
-
-            case 100: {
-                Band[BandIndex].radix = 1000;
-                // clear residual < 1kHz frequency component from the active VFO
-                //  uint16_t f = Band[BandIndex].Hz % 1000;
-                //  Band[BandIndex].Hz =  Band[BandIndex].Hz - f;
-            }
-            break;
-    #endif
-
-            case 1000: {
-                Band[BandIndex].radix = 100;
-            }
-            break;
-
-            case 10000: {
-                Band[BandIndex].radix = 1000;
-            }
-            break;
-            }
-#else
             // default radix increment/decrement behaviour...
             switch (Band[BandIndexCurrent].radix)
             {
@@ -692,9 +650,7 @@ void loop()
                 break;
             }
             }
-#endif
-        } // else
-        FrequencyChanged = true;
+        }
     }
 }
 
@@ -703,7 +659,7 @@ void loop()
 // ------------------------------------------------------------------------------------------------------------------
 
 //**************************************/
-//* Change frequency
+//  Change frequency
 //**************************************/
 
 void ChangeFrequency(int dir)
@@ -721,8 +677,6 @@ void ChangeFrequency(int dir)
             Band[BandIndexCurrent].Hz =
                 Band[BandIndexCurrent].Hz - Band[BandIndexCurrent].radix;
     };
-
-    FrequencyChanged = 1;
 };
 
 /**
@@ -757,7 +711,7 @@ byte GetSwSet1ButtonNumber()
     }
 
     return previousButtonNumber;
-} // GetSwSet1ButtonNumber()
+} 
 
 byte GetSwSet1ButtonNumberAtInstant()
 // Take a reading of the front panel buttons and map it to a button number
@@ -769,12 +723,12 @@ byte GetSwSet1ButtonNumberAtInstant()
     //  Serial.print("Frnt bttn="); Serial.println(z);
 
     if (z > 59 && z < 141)
-        b = 4; // 100  band up
+        b = 1; // 100  band up
     else if (z > 168 && z <= 249)
-        b = 1; // 209  band down
+        b = 2; // 209  band down
     else if (z > 254 && z <= 345)
-        b = 6; // 305  radix
-               // else if (z >= 0 && z <= 40)   b = ?;  //   0  net switch
+        b = 3; // 305  radix
+               
 
     if (b > 0)
     {
