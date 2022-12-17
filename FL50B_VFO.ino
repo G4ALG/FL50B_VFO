@@ -1,6 +1,6 @@
-// ==============================================================================================
+// ****************************************************************************************************
 // Contents of this file
-// ==============================================================================================
+// ****************************************************************************************************
 
 /*
 The contents of this file are grouped as follows:
@@ -22,9 +22,9 @@ Loop()
 Functions
 
 
-// ==============================================================================================
+// ****************************************************************************************************
 // Introduction
-// ==============================================================================================
+// ****************************************************************************************************
 
 Version history
 ---------------
@@ -136,9 +136,9 @@ Further details of the hardware and the circuit diagram can be found at:
 http://www.alg.myzen.co.uk/radio_g/qrp/fl50b_dds_vfo.htm
 
 
-// ==============================================================================================
+// ****************************************************************************************************
 // Coding Standards
-// ==============================================================================================
+// ****************************************************************************************************
 
 /*
 My prefered coding standards document can be found at:
@@ -190,22 +190,22 @@ This program avoids the use of shorthand C++ statements.  For example, 'i = i + 
 
 */
 
-// ==============================================================================================
+// ****************************************************************************************************
 //  Global declarations and initialisations
-// ==============================================================================================
+// ****************************************************************************************************
 
-// ----------------------------------------------------------------------------------------------
+// =======================================================================================
 //  Libraries
-// ----------------------------------------------------------------------------------------------
+// =======================================================================================
 
 #include <EEPROM.h> // IDE Standard
 #include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
 #include <Wire.h>   // IDE Standard
 #include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
 
-// ----------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 //  Liquid Crystal Display
-// ----------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 
 #include <LiquidCrystal.h> // IDE Standard
 
@@ -310,11 +310,6 @@ Si5351 si5351;
 Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
 
 // ----------------------------------------------------------------------------------------------
-//  Initialise variable that will be 'true' when the secondary action associated with the next
-//  button pressed should be initiated.
-bool SecondaryActionFlag = false;
-
-// ----------------------------------------------------------------------------------------------
 // Declare variables for controlling EEPROM writes
 unsigned long LastFrequencyChangeTimer;
 bool EepromUpdatedSinceLastFrequencyChange;
@@ -330,10 +325,10 @@ ISR(PCINT2_vect)
         ChangeFrequency(-1);
 }
 
-// ==============================================================================================
+// ****************************************************************************************************
 //      Start of setup() function.   Runs once.  Used to initialize variables, pin modes,
 //                                   start using libraries, etc..
-// ==============================================================================================
+// ****************************************************************************************************
 
 void setup()
 {
@@ -389,7 +384,7 @@ void setup()
     PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
     sei();
 
-    // ------------------------------------------on----------------------------------------------------
+    // ----------------------------------------------------------------------------------------------
     // Load Band array from EEPROM
     BandIndexCurrent = EEPROM.read(0);
     Serial.print("setup() eeprom: BandIndex=");
@@ -413,11 +408,7 @@ void setup()
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 153125);
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
-    // ----------------------------------------------------------------------------------------------
-    // Print current transmit frequency to console
-    Serial.print("Tx Frequency = ");
-    Serial.println(Band[BandIndexCurrent].Hz);
-
+    
     // ----------------------------------------------------------------------------------------------
     // Declare variable for actual frequency to be generated for a selected transmit frequency
     volatile uint32_t f;
@@ -447,13 +438,11 @@ void setup()
     EepromUpdatedSinceLastFrequencyChange = false;
 }
 
-// ---------------------------------------------------------------------------------------------
-// End of setup() function
-// ---------------------------------------------------------------------------------------------
 
-// ==============================================================================================
+
+// ****************************************************************************************************
 //  Start of loop() function.    This function loops repeatedly.
-// ==============================================================================================
+// ****************************************************************************************************
 
 void loop()
 {
@@ -506,162 +495,75 @@ void loop()
     // A switch Set 1 button has been pressed and released, so initiate action
     if (ButtonNumber == 2)
     {
-        if (!SecondaryActionFlag)
+
+        //---------------------------------------------------------------------------------------
+        // The primary action for Button 2, Switch Set 1 is the Band Down action
+        Serial.println("<B2>BAND DOWN");
+        if (BandIndexCurrent == 0)
         {
-            //---------------------------------------------------------------------------------------
-            // The primary action for Button 2, Switch Set 1 is the Band Down action
-            Serial.println("<B2>BAND DOWN");
-            if (BandIndexCurrent == 0)
-            {
-                BandIndexCurrent = (NUMBER_OF_BANDS - 1);
-            }
-            else
-            {
-                BandIndexCurrent = BandIndexCurrent - 1;
-            }
+            BandIndexCurrent = (NUMBER_OF_BANDS - 1);
         }
         else
         {
-            Serial.println("<F><B1>N/A");
-            SecondaryActionFlag = false;
-        };
-    };
+            BandIndexCurrent = BandIndexCurrent - 1;
+        }
 
-   
- 
+        ;
+    };
 
     if (ButtonNumber == 1)
     {
-        if (!SecondaryActionFlag)
-        {
-            if (ButtonHeldFlag)
-            {
-                Serial.println("<B4> Held");
-                // When held, Button 4 does not currently have an action defined.
-                ButtonHeldFlag = false;
-            }
-            else
-            {
-                //-----------------------------------------------------------------------------------
-                // The primary action for Button 1, Switch Set 1 is the Band Up action
-                Serial.println("<B1>BAND UP");
-                // int BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
-                if (BandIndexCurrent == (NUMBER_OF_BANDS - 1))
-                    BandIndexCurrent = 0;
-                else
-                    BandIndexCurrent = BandIndexCurrent + 1;
-            }
-        }
-        else
-        {
-            lcd.clear();
-            SecondaryActionFlag = false;
-        }
-    }
 
-/*
-    if (ButtonNumber == 5)
-    {
-        Serial.println("<B5>Fn tgl");
-        SecondaryActionFlag = !SecondaryActionFlag;
-        if (SecondaryActionFlag)
-            Serial.println("Function...");
-    }
-*/
+        //-----------------------------------------------------------------------------------
+        // The primary action for Button 1, Switch Set 1 is the Band Up action
+        Serial.println("<B1>BAND UP");
+        // int BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
+        if (BandIndexCurrent == (NUMBER_OF_BANDS - 1))
+            BandIndexCurrent = 0;
+        else
+            BandIndexCurrent = BandIndexCurrent + 1;
+    };
+
     if (ButtonNumber == 3)
     // Button 3: change frequency step up
 
     {
-        if (!SecondaryActionFlag)
-            Serial.println("<B3>FREQUENCY STEP SIZE DOWN");
-        else
-            Serial.println("<F><B3>f step l");
 
-        if (ButtonHeldFlag)
-        {
-            Serial.println("<B3>held -- toggle IF filters");
-        }
-        else
         {
 
             // default radix increment/decrement behaviour...
             switch (Band[BandIndexCurrent].radix)
             {
-            case 10: {
-                if (!SecondaryActionFlag)
-                {
-                    // change radix up
-                    Band[BandIndexCurrent].radix = 10000;
-                    // clear residual < 1kHz frequency component from the active VFO
-                    //  uint16_t f = Band[BandIndex].Hz % 1000;
-                    //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
-                }
-                else
-                {
-                    SecondaryActionFlag = false;
-                    // change radix down
-                    Band[BandIndexCurrent].radix = 100;
-                    // clear residual < 100Hz frequency component from the active VFO
-                    //  uint16_t f = Band[BandIndex].Hz % 100;
-                    //  Band[BandIndex].Hz =  Band[BandIndex].Hz  - f;
-                }
-            }
-            break;
-
-            case 100: {
-                if (!SecondaryActionFlag)
-                {
-                    Band[BandIndexCurrent].radix = 10;
-                }
-                else
-                {
-                    SecondaryActionFlag = false;
-                    Band[BandIndexCurrent].radix = 1000;
-                    // clear residual < 1 kHz frequency component from the active VFO
-                    //  uint16_t f = Band[BandIndex].Hz % 1000;
-                    //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
-                }
-            }
-            break;
-
-            case 1000: {
-                if (!SecondaryActionFlag)
-                {
-                    Band[BandIndexCurrent].radix = 100;
-                }
-                else
-                {
-                    SecondaryActionFlag = false;
-                    Band[BandIndexCurrent].radix = 10000;
-                }
+            case 10:
+                // change radix up
+                Band[BandIndexCurrent].radix = 10000;
+                // clear residual < 1kHz frequency component from the active VFO
+                //  uint16_t f = Band[BandIndex].Hz % 1000;
+                //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
                 break;
-            }
 
-            case 10000: {
-                if (!SecondaryActionFlag)
-                {
-                    Band[BandIndexCurrent].radix = 1000;
-                }
-                else
-                {
-                    SecondaryActionFlag = false;
-                    Band[BandIndexCurrent].radix = 10;
-                }
+            case 100:
+                Band[BandIndexCurrent].radix = 10;
                 break;
-            }
+
+            case 1000:
+                Band[BandIndexCurrent].radix = 100;
+                break;
+
+            case 10000:
+                Band[BandIndexCurrent].radix = 1000;
+
+                break;
             }
         }
     }
 }
 
-// ------------------------------------------------------------------------------------------------------------------
-// Functions
-// ------------------------------------------------------------------------------------------------------------------
+// ****************************************************************************************************
+//  Functions
+// ****************************************************************************************************
 
-//**************************************/
-//  Change frequency
-//**************************************/
-
+// =======================================================================================
 void ChangeFrequency(int dir)
 {
 
@@ -679,10 +581,9 @@ void ChangeFrequency(int dir)
     };
 };
 
-/**
- * Take a reading of the front panel buttons and map it to a button number.
- * Requiring 20 consecutive identical readings before accepting the result.
-*/
+// =======================================================================================
+// Take readings of the Switch Set 1 push buttons and map to a button number.
+// Get 20 consecutive identical readings before returning the result.
 byte GetSwSet1ButtonNumber()
 {
     byte numberOfConsecutiveButtonResultsRequired = 20;
@@ -711,16 +612,15 @@ byte GetSwSet1ButtonNumber()
     }
 
     return previousButtonNumber;
-} 
+}
 
-byte GetSwSet1ButtonNumberAtInstant()
+// =======================================================================================
 // Take a reading of the front panel buttons and map it to a button number
-// (0..4)
+byte GetSwSet1ButtonNumberAtInstant()
 {
     byte b = 0;
     int z;
     z = ReadAnalogPin((byte)SW_SET1_ipA2);
-    //  Serial.print("Frnt bttn="); Serial.println(z);
 
     if (z > 59 && z < 141)
         b = 1; // 100  band up
@@ -728,7 +628,6 @@ byte GetSwSet1ButtonNumberAtInstant()
         b = 2; // 209  band down
     else if (z > 254 && z <= 345)
         b = 3; // 305  radix
-               
 
     if (b > 0)
     {
@@ -736,17 +635,17 @@ byte GetSwSet1ButtonNumberAtInstant()
         Serial.print(" : ");
     }
     return b;
-} // GetSwSet1ButtonNumberAtInstant()
+}
 
+// =======================================================================================
 int ReadAnalogPin(byte p)
 {
-    // Take an averaged reading of analogue pin 'p'
     int i,
         val = 0,
-        nbr_reads = 1; //  this used to average 2 readings!  Resulted in failure
+        nbr_reads = 1; //  this used to average 2 readings.  Resulted in failure
                        //  to identify the correct button due to averaging of
                        //  voltage levels under contact bounce scenarios, hence
-                       //  decoding to the wrong button number!
+                       //  decoding to the wrong button number.
     for (i = 0; i < nbr_reads;)
     {
         val = val + analogRead(p);
@@ -756,140 +655,7 @@ int ReadAnalogPin(byte p)
     return val / nbr_reads;
 };
 
-byte ReadSwitchSet2()
-{
-    // Reads the keyer memory buttons (switch set 2) and returns the button
-    // nuSwitchSet2Buttoner as a byte; 0 if not pressed
-    byte SwitchSet2Button = 0;
-    int voltageLevel;
-    //    voltageLevel = ReadAnalogPin(SW_SET2_ipA3);    // read the analog pin
-
-    // Serial.print("Kyr pshbtn voltageLevel="); Serial.println(voltageLevel);
-
-    // Voltage level (0-1023) to button look-up
-
-    if (voltageLevel > 471 && voltageLevel < 551)
-        SwitchSet2Button = 1; //  MEM1
-    if (voltageLevel > 594 && voltageLevel < 674)
-        SwitchSet2Button = 2; //  MEM2
-    if (voltageLevel > 676 && voltageLevel < 756)
-        SwitchSet2Button = 3; //  MEM3
-    if (voltageLevel > 770 && voltageLevel < 850)
-        SwitchSet2Button = 4; //  MEM4
-
-    if (SwitchSet2Button > 0)
-    {
-        Serial.print("Keyer pushbutton=");
-        Serial.print(SwitchSet2Button);
-        Serial.print(", voltageLevel=");
-        Serial.println(voltageLevel);
-    }
-    return SwitchSet2Button;
-}
-
-/*
-
-void RxTxControl(char c)
-{
-    // if necessary, activates the receiver or the transmitter
-    // 'c' may be either 'T' or 'R'
-    // and, in the future, 'N' (Net) to indicate low level TX carrier 'on' while
-    // receiver running.
-
-    //  if(!TxState && c =='T') ChangeStateRxToTx();
-    //  else
-    //    if(TxState && c =='R') ChangeStateTxToRx();
-    // else
-    //  //  if(!TxState &&  c =='N')  receive_to_NET();
-
-    // in  all other cases, do nothing!
-}
-
-*/
-
-/*
-
-Scratch Pad Area to learn about Classes.
-
-This learning exercise is aimed at creating a Class and an Object to refresh the
-LCD such that the current Function 'RefreshLcd' is replaced through an
-object-oriented approach.
-
-
-
-// clang-format: off
-class Display {             // Create the Display class.  Here, display is a
-noun. public:               // 'public' specifies that access to
-attributes and
-                            // methods are
-                            // accessible from outside the class.
-
-
-  Display()                // Create the Display public method.  Here, Display
-is a verb.
-
-
-  // assign the following values to the attribute 'lcd' within the LiquidCrystal
-class
-  // where LiquidCrystal is private to
-  : lcd(LCD_RS_op8, LCD_E_op9, LCD_D4_op10, LCD_D5_op11, LCD_D6_op12,
-LCD_D7_op13)
-  , _text_changed{true}
-  , _text("")
-  { lcd.begin(16, 2);  }
-
-  void Refresh()
-  {
-
-    if (!_text_changed)
-      return;
-
-    lcd.setCursor(0, 1);
-    lcd.print(_text);
-
-    _text_changed = false;
-  }
-
-  bool SetText(String text) {
-    if (text.length() > 16) {
-      return false;
-    }
-
-    _text = text;
-    _text_changed = true;
-
-    return true;
-  }
-
-private:
-  String _text;
-  bool _text_changed;
-  LiquidCrystal lcd;
-};
-
-Display display;     //Create the display object of Display
-
-void setup() {
-  // set up the LCD's number of columns and rows:
-  // lcd.begin(16, 2);
-  // // Print a message to the LCD.
-  // lcd.print("hello, world!");
-}
-
-void loop() {
-  //
-  auto new_text = String(millis() / 1000);
-
-  auto ok = display.SetText(new_text);
-  if (!ok) {
-    // Serial.println(String("[Error] invalid text: ") + new_text);
-  }
-
-  display.Refresh();
-}
-
-*/
-
+// =======================================================================================
 void RefreshLcd()
 {
     // Update the LCD
@@ -1021,9 +787,7 @@ void RefreshLcd()
     };
 }
 
-// ------------------------------------------------------------------------------------------------------------------
-// EEPROM
-
+// =======================================================================================
 void UpdateEeprom()
 {
     if (abs(millis() - LastFrequencyChangeTimer) > 10000)
