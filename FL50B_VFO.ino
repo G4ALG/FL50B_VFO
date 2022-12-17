@@ -20,6 +20,13 @@ Setup()
 Loop()
 
 Functions
+  ChangeFrequency()
+  GetSwSet1ButtonNumber()
+  GetSwSet1ButtonNumberAtInstant()
+  ReadAnalogPin()
+  RefreshLcd()
+  UpdateEeprom()
+
 
 
 // ****************************************************************************************************
@@ -83,6 +90,10 @@ QUOTE
   - Jason Mildrum NT7S (si5351 library)
   - too many others to mention (ideas, code snippets).
 UNQUOTE
+
+As far as the tailoring of Paul's code to meet the needs of this project is concerned, I am
+very grateful to my three sons Trevor, Colin, and Ben ('The Brothers Three') for their support 
+and encouragement, and for their solutions to problems encountered during development.
 
 
 Hardware connections
@@ -287,8 +298,8 @@ byte ButtonNumber; // Push button identifier
 typedef struct
 {
     boolean active;
-    uint32_t Hz;
-    uint32_t radix;
+    uint32_t Frequency;
+    uint32_t StepSize;
 } BandParameters;
 
 // ----------------------------------------------------------------------------------------------
@@ -356,9 +367,9 @@ void setup()
 
     // ----------------------------------------------------------------------------------------------
     // Display version number (first row) and version date (second row) for 2 seconds, then clear it
-    lcd.print("Build V01.05");
+    lcd.print("Build V01.06");
     lcd.setCursor(0, 1);
-    lcd.print("09/12/2022");
+    lcd.print("17/12/2022");
     delay(2000);
     lcd.clear();
 
@@ -408,7 +419,6 @@ void setup()
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 153125);
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
-    
     // ----------------------------------------------------------------------------------------------
     // Declare variable for actual frequency to be generated for a selected transmit frequency
     volatile uint32_t f;
@@ -417,11 +427,11 @@ void setup()
     // Algorithm for determining actual VFO frequency to be generated for the transmit
     // frequency currently displayed on the LCD
     {
-        if ((Band[BandIndexCurrent].Hz) >= 10000000)
-            f = Band[BandIndexCurrent].Hz - 5172400;
+        if ((Band[BandIndexCurrent].Frequency) >= 10000000)
+            f = Band[BandIndexCurrent].Frequency - 5172400;
 
         else
-            f = Band[BandIndexCurrent].Hz + 5172400;
+            f = Band[BandIndexCurrent].Frequency + 5172400;
     }
 
     // ----------------------------------------------------------------------------------------------
@@ -437,8 +447,6 @@ void setup()
     LastFrequencyChangeTimer = millis();
     EepromUpdatedSinceLastFrequencyChange = false;
 }
-
-
 
 // ****************************************************************************************************
 //  Start of loop() function.    This function loops repeatedly.
@@ -458,11 +466,11 @@ void loop()
         // Algorithm for determining actual VFO frequency to be generated for the transmit
         // frequency currently displayed on the LCD
         {
-            if ((Band[BandIndexCurrent].Hz) >= 10000000)
-                f = Band[BandIndexCurrent].Hz - 5172400;
+            if ((Band[BandIndexCurrent].Frequency) >= 10000000)
+                f = Band[BandIndexCurrent].Frequency - 5172400;
 
             else
-                f = Band[BandIndexCurrent].Hz + 5172400;
+                f = Band[BandIndexCurrent].Frequency + 5172400;
         }
 
         // ------------------------------------------------------------------------------------------
@@ -485,7 +493,7 @@ void loop()
     ButtonNumber = GetSwSet1ButtonNumber();
 
     //-----------------------------------------------------------------------------------------------
-    // Wait until the Switch Set 1 button has been released
+    // Wait until the button in Switch Set 1 has been released
     while (ButtonNumber > 0 && GetSwSet1ButtonNumber() > 0)
     {
         delay(5);
@@ -493,70 +501,54 @@ void loop()
 
     //-----------------------------------------------------------------------------------------------
     // A switch Set 1 button has been pressed and released, so initiate action
-    if (ButtonNumber == 2)
-    {
 
-        //---------------------------------------------------------------------------------------
-        // The primary action for Button 2, Switch Set 1 is the Band Down action
-        Serial.println("<B2>BAND DOWN");
-        if (BandIndexCurrent == 0)
-        {
-            BandIndexCurrent = (NUMBER_OF_BANDS - 1);
-        }
-        else
-        {
-            BandIndexCurrent = BandIndexCurrent - 1;
-        }
-
-        ;
-    };
-
+    //-----------------------------------------------------------------------------------
+    // Button 1, Switch Set 1 initiates the Band Up action
     if (ButtonNumber == 1)
     {
-
-        //-----------------------------------------------------------------------------------
-        // The primary action for Button 1, Switch Set 1 is the Band Up action
         Serial.println("<B1>BAND UP");
-        // int BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
         if (BandIndexCurrent == (NUMBER_OF_BANDS - 1))
             BandIndexCurrent = 0;
         else
             BandIndexCurrent = BandIndexCurrent + 1;
     };
 
-    if (ButtonNumber == 3)
-    // Button 3: change frequency step up
-
+    // Button 2, Switch Set 1 initiates the Band Down action
+    if (ButtonNumber == 2)
     {
+        Serial.println("<B2>BAND DOWN");
+        // If currently on lowest frequency band, then wrap to highest frequency band
+        if (BandIndexCurrent == 0)
+            BandIndexCurrent = (NUMBER_OF_BANDS - 1);
+        else
+            BandIndexCurrent = BandIndexCurrent - 1;
+    };
 
+    //-----------------------------------------------------------------------------------
+    // Button 3, Switch Set 1 (Rotary Encoder push button) initiates the Reduce Step Size action
+    if (ButtonNumber == 3)
+        switch (Band[BandIndexCurrent].StepSize)
         {
+        case 10:
+            // Currently on minimum step size, so wrap to maximum step size.
+            Band[BandIndexCurrent].StepSize = 10000;
+            // clear residual < 1kHz frequency component from the active VFO
+            //  uint16_t f = Band[BandIndex].Frequency % 1000;
+            //  Band[BandIndex].Frequency = Band[BandIndex].Frequency - f;
+            break;
 
-            // default radix increment/decrement behaviour...
-            switch (Band[BandIndexCurrent].radix)
-            {
-            case 10:
-                // change radix up
-                Band[BandIndexCurrent].radix = 10000;
-                // clear residual < 1kHz frequency component from the active VFO
-                //  uint16_t f = Band[BandIndex].Hz % 1000;
-                //  Band[BandIndex].Hz = Band[BandIndex].Hz - f;
-                break;
+        case 100:
+            Band[BandIndexCurrent].StepSize = 10;
+            break;
 
-            case 100:
-                Band[BandIndexCurrent].radix = 10;
-                break;
+        case 1000:
+            Band[BandIndexCurrent].StepSize = 100;
+            break;
 
-            case 1000:
-                Band[BandIndexCurrent].radix = 100;
-                break;
-
-            case 10000:
-                Band[BandIndexCurrent].radix = 1000;
-
-                break;
-            }
+        case 10000:
+            Band[BandIndexCurrent].StepSize = 1000;
+            break;
         }
-    }
 }
 
 // ****************************************************************************************************
@@ -569,15 +561,15 @@ void ChangeFrequency(int dir)
 
     if (dir == 1) // Increment
     {
-        Band[BandIndexCurrent].Hz =
-            Band[BandIndexCurrent].Hz + Band[BandIndexCurrent].radix;
+        Band[BandIndexCurrent].Frequency =
+            Band[BandIndexCurrent].Frequency + Band[BandIndexCurrent].StepSize;
     }
     else
     {
         if (dir == -1) // Decrement
 
-            Band[BandIndexCurrent].Hz =
-                Band[BandIndexCurrent].Hz - Band[BandIndexCurrent].radix;
+            Band[BandIndexCurrent].Frequency =
+                Band[BandIndexCurrent].Frequency - Band[BandIndexCurrent].StepSize;
     };
 };
 
@@ -627,7 +619,7 @@ byte GetSwSet1ButtonNumberAtInstant()
     else if (z > 168 && z <= 249)
         b = 2; // 209  band down
     else if (z > 254 && z <= 345)
-        b = 3; // 305  radix
+        b = 3; // 305  Step Size
 
     if (b > 0)
     {
@@ -661,7 +653,7 @@ void RefreshLcd()
     // Update the LCD
     uint16_t f, g;
     uint32_t band_l;
-    band_l = Band[BandIndexCurrent].Hz;
+    band_l = Band[BandIndexCurrent].Frequency;
 
     // Check whether BandIndex has changed.  If so, set the cursor position and
     // update LCD with wavelength.
@@ -767,7 +759,7 @@ void RefreshLcd()
 
     byte CursorPosition = 14;
 
-    switch (Band[BandIndexCurrent].radix)
+    switch (Band[BandIndexCurrent].StepSize)
     {
     case 10:
         lcd.setCursor(CursorPosition, 0);
