@@ -1,8 +1,8 @@
+/*
 // ****************************************************************************************************
 // Contents of this file
 // ****************************************************************************************************
 
-/*
 The contents of this file are grouped as follows:
 
 Introduction
@@ -35,9 +35,11 @@ Functions
 
 Version history
 ---------------
-V1.0, 11/10/2022 - First version.  
-V1.0 04, 21/11/2022   Included push button debounce code written by Ben Rawlings.
-V1.0 05, 09/12/2022   Minor changes.  Known issue: Requires separate EEPROM initialisation script.
+V1.0.00, 11/10/2022   First version.  
+V1.0.04, 21/11/2022   Included push button debounce code written by Ben Rawlings, and a fix for an
+                      excessive number of writes to the LCD by Colin Rawlings.
+V1.0.05, 09/12/2022   Minor changes.  Known issue: Requires separate EEPROM initialisation script.
+V1.0.06, 17/12/2022   Significant tidying of the code to remove redundant code, and rename variables.
 
 About this program
 ------------------
