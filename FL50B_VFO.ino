@@ -3,8 +3,6 @@
 // Contents of this file
 // ****************************************************************************************************
 
-The contents of this file are grouped as follows:
-
 Introduction
   Version History
   About this program
@@ -12,8 +10,24 @@ Introduction
   Hardware Connections
 
 Coding Standards
+  Abbreviations
+  Naming of global constant
+  Naming of global variable
+  Naming of Local variable
+  Naming of Struct
+  Naming of Function
+  Curly brackets
+  Clarity of code
+  Reference
 
 Global declarations and initialisations
+  Libraries
+  Liquid Crystal Display
+  Arduino Nano digital pin assignments
+  Arduino Nano analogue pin assignments
+  User preferences
+  Global variables
+
 
 Setup()
 
@@ -149,20 +163,17 @@ Further details of the hardware and the circuit diagram can be found at:
 http://www.alg.myzen.co.uk/radio_g/qrp/fl50b_dds_vfo.htm
 
 
+
+
 // ****************************************************************************************************
 // Coding Standards
 // ****************************************************************************************************
 
-/*
-My prefered coding standards document can be found at:
-https://chaste.cs.ox.ac.uk/trac/raw-attachment/wiki/CodingStandardsStrategy/codingStandards.pdf
-
-
-
 Abbreviations
 -------------
-Where abbreviations are included within names of variables or functions, the abbreviation will be 
+Where abbreviations are included within names of variables or functions, the abbreviation is
 transformed to title case. For example, LPF becomes Lpf
+
 
 Naming of global constant
 -------------------------
@@ -172,34 +183,43 @@ UPPER_CASE with underscore separators
    If associated with digital output pin: add _op<pin number> suffix
    If associated with analogue output pin: add _opA<pin number> suffix
 
+
 Naming of global variable
 -------------------------
 TitleCamelCase comprising a descriptive name or compound name
+
 
 Naming of Local variable
 ------------------------
 camelCase comprising a descriptive name or compound name
 
+
 Naming of Struct
 ----------------
 TitleCamelCase comprising a descriptive name or compound name
+
 
 Naming of Function
 ------------------
 TitleCamelCase comprising a descriptive query or action statement, possibly prefixed with 
 a word indicated the purpose, such as Is/Has/Get/Set
 
-Curly bracket
--------------
+
+Curly brackets
+--------------
 Unless the opening bracket is used to enclose data, it should be placed by itself on a new line
 
-For Loop
----------
-i retained
 
 Clarity of code
 ---------------
 This program avoids the use of shorthand C++ statements.  For example, 'i = i + 1', rather than 'i++'
+
+
+Reference
+---------
+My prefered coding standards document can be found at:
+https://chaste.cs.ox.ac.uk/trac/raw-attachment/wiki/CodingStandardsStrategy/codingStandards.pdf
+
 
 */
 
@@ -212,15 +232,15 @@ This program avoids the use of shorthand C++ statements.  For example, 'i = i + 
 // =======================================================================================
 
 #include <EEPROM.h> // IDE Standard
-#include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
-#include <Wire.h>   // IDE Standard
-#include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
-
-// ----------------------------------------------------------------------------------
-//  Liquid Crystal Display
-// ----------------------------------------------------------------------------------
-
 #include <LiquidCrystal.h> // IDE Standard
+#include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
+#include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
+#include <Wire.h>   // IDE Standard
+
+
+// =======================================================================================
+//  Liquid Crystal Display
+// =======================================================================================
 
 // Initialise the LiquidCrystal library by defining the interface between the
 // LCD and the Arduino Nano.
@@ -292,17 +312,15 @@ unsigned long Txlo = 5712400; // Frequency of local oscillator in FL-50B in Hz. 
 
 byte ButtonNumber; // Push button identifier
 
-// See: https://forum.arduino.cc/t/defining-a-struct-array/43699/2
-
 // ----------------------------------------------------------------------------------------------
 // Combined Typedef and Structure declaration for band parameters.
-// These parameters apply on a per band basis (Status; Frequency in Hz; Step Size)
-typedef struct
+// These three band parameters apply on a per band basis (Status; Frequency; Step Size)
+typedef struct      
 {
     boolean active;
     uint32_t Frequency;
     uint32_t StepSize;
-} BandParameters;
+} BandParameters; 
 
 // ----------------------------------------------------------------------------------------------
 // Array of BandParameters, one set per band
