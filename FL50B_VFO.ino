@@ -25,7 +25,6 @@ Global declarations and initialisations
   Liquid Crystal Display
   Arduino Nano digital pin assignments
   Arduino Nano analogue pin assignments
-  User preferences
   Global variables
 
 
@@ -114,26 +113,27 @@ and encouragement, and for their solutions to problems encountered during develo
 
 Hardware connections
 --------------------
+          
+            Arduino Nano module to LCD module Connections
+            ---------------------------------------------
 
-           LCD module to Arduino Nano module Connections
-           ---------------------------------------------
-LCD RS (Register Select)    ____________     Arduino Nano D8 output 
-                   Pin 4                     Pin 11 
+               D8 output    ____________     LCD RS (Register Select)
+                  Pin 11                     Pin 4
 
-          LCD E (Enable)    _____________    Arduino Nano D9 output       
-                   Pin 6                     Pin 12 
+               D9 output    ____________     LCD E (Enable)
+                  Pin 12                     Pin 6
 
-                  LCD D4    _____________    Arduino Nano D10 output
-                  Pin 11                     Pin 13  
+              D10 output    ____________     LCD D4
+                  Pin 13                     Pin 11
 
-                  LCD D5    _____________    Arduino Nano D11 output
-                  Pin 12                     Pin 14
+               D11 output   ____________     LCD D5
+                  Pin 14                     Pin 12
 
-                  LCD D6    _____________    Arduino Nano D12 output
-                  Pin 13                     Pin 15
+               D12 output   ____________     LCD D6
+                  Pin 15                     Pin 13
 
-                  LCD D7    _____________    Arduino Nano D13 output
-                  Pin 14                     Pin 16
+               D13 output   ____________     LCD D7
+                  Pin 16                     Pin 14
 
 
 
@@ -143,7 +143,7 @@ LCD RS (Register Select)    ____________     Arduino Nano D8 output
                  LCD VSS    _____________    Ground
                    Pin 1                     
 
-            LCD VDD (VCC)   _____________    + 5V        
+            LCD VDD (VCC)   _____________    +5 V        
                     Pin 2
 
                    LCD VD   _____________     Wiper of 10 k potentiometer 
@@ -152,12 +152,22 @@ LCD RS (Register Select)    ____________     Arduino Nano D8 output
                   LCD R/W   _____________     Ground
                     Pin 5                     
 
-             LCD LED A (+)   _____________    via 220 ohm resistor to +5V 
+             LCD LED A (+)   _____________    via 220 ohm resistor to +5 V 
                     Pin 15                    
 
              LCD LED K (-)   _____________    Ground
                     Pin 16                    
 
+
+                
+             Si5351 module to Arduino Nano module I2C Connections
+             ----------------------------------------------------
+
+                    SDA       ____________     Arduino Nano A4 output 
+
+
+                    SCL       ____________     Arduino Nano A5 output 
+                                      
 
 Further details of the hardware and the circuit diagram can be found at:
 http://www.alg.myzen.co.uk/radio_g/qrp/fl50b_dds_vfo.htm
@@ -231,12 +241,11 @@ https://chaste.cs.ox.ac.uk/trac/raw-attachment/wiki/CodingStandardsStrategy/codi
 //  Libraries
 // =======================================================================================
 
-#include <EEPROM.h> // IDE Standard
+#include <EEPROM.h>        // IDE Standard
 #include <LiquidCrystal.h> // IDE Standard
-#include <Rotary.h> // Ben Buxton https://github.com/brianlow/Rotary
-#include <si5351.h> // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
-#include <Wire.h>   // IDE Standard
-
+#include <Rotary.h>        // Ben Buxton https://github.com/brianlow/Rotary
+#include <si5351.h>        // Etherkit Si5331 library from NT7S,  V2.1.4   https://github.com/etherkit/Si5351Arduino
+#include <Wire.h>          // IDE Standard
 
 // =======================================================================================
 //  Liquid Crystal Display
@@ -251,10 +260,7 @@ const byte LCD_D5_op11 = 11; // LCD D5 (Nano D11 output)
 const byte LCD_D6_op12 = 12; // LCD D6 (Nano D12 output)
 const byte LCD_D7_op13 = 13; // LCD D7 (Nano D13 output)
 
-uint32_t _last_BandIndex = -1;
-uint32_t _last_freq = -1;
-// Used in RefreshLcd function to decide whether to update the display.
-
+// Initialise LCD
 LiquidCrystal
     lcd(LCD_RS_op8, LCD_E_op9, LCD_D4_op10, LCD_D5_op11, LCD_D6_op12, LCD_D7_op13);
 
@@ -262,8 +268,8 @@ LiquidCrystal
 //  Arduino Nano digital pin assignments
 // ----------------------------------------------------------------------------------------------
 
-//                 0       Serial communications bus
-//                 1       Serial communications bus
+//  Inherent               0;  // Serial communications bus
+//  Inherent               1;  // Serial communications bus
 
 const byte ENCODER_A_ip2 = 2; // input from encoder pin A, pin D2 pulsed low
 const byte ENCODER_B_ip3 = 3; // input from encoder pin B, pin D3 pulsed low
@@ -277,8 +283,8 @@ const byte SW_SET1_ipA2 = A2;
 /*
 SW_SET1 is the input from Switch Set 1 which uses up to ten momemtary push button switches to select 
 an associated pull down resistor to form a potential divider with a 470 ohm rersistor connected to + 5V.
-The resulting voltage at A2 is read during loop() and may trigger an operation.   Only three push 
-buttons are used for this project (for Band Up, Band Down, and Frequency Step Size).
+The resulting DC voltage at A2 is read during loop() and converted to a number (ADC value).  Only three 
+push buttons are used for this project (Band Up, Band Down, and Reduce Step Size).
 */
 //    ADC
 //   Value     Action                           Description
@@ -287,50 +293,44 @@ buttons are used for this project (for Band Up, Band Down, and Frequency Step Si
 //                               (3.5 > 7 > 14 > 21 > 28 MHz, then 3.5 etc.)
 //    209     BAND_DOWN        Shifts VFO frequency down one band
 //                               (28 > 21 > 14 > 7 > 3.5 MHz, then 28 etc.)
-//    305      REDUCE          Pressing the rotary encoder push button changes the tuning step
+//    305      REDUCE          Pressing the rotary encoder push button reduces the tuning step
 //            STEP SIZE        size with each short press
 //                               (10^4 >  10^3  > 10^2 > tens of Hz, then 10^4 etc.)
 //
 //
-//                A3    Not used
-//                A4    Used for SDA
-//                A5    Used for SCL
-
-// ----------------------------------------------------------------------------------------------
-//  User preferences
-// ----------------------------------------------------------------------------------------------
-
-const int NUMBER_OF_BANDS = 5;
-// The FL50B has five selectable bands
 
 // ----------------------------------------------------------------------------------------------
 //  Global variables
 // ----------------------------------------------------------------------------------------------
 
-unsigned long Txlo = 5712400; // Frequency of local oscillator in FL-50B in Hz.  The VFO frequency
-                              // generated by this project needs to be shifted by <Txlo> Hz.
+// Variable used in RefreshLcd() to decide whether to update the display.
+uint32_t BandIndexPrevious = -1;
 
-byte ButtonNumber; // Push button identifier
+// Variable used in RefreshLcd() to decide whether to update the display.
+uint32_t FrequencyPrevious = -1;
 
-// ----------------------------------------------------------------------------------------------
+// Variable for numerical push button identifier
+byte ButtonNumber;
+
+// Variable for the FL-50B's total number of selectable bands (10, 15, 20, 40 and 80 metres).
+const int NUMBER_OF_BANDS = 5;
+
 // Combined Typedef and Structure declaration for band parameters.
 // These three band parameters apply on a per band basis (Status; Frequency; Step Size)
-typedef struct      
+typedef struct
 {
     boolean active;
     uint32_t Frequency;
     uint32_t StepSize;
-} BandParameters; 
+} BandParameters;
 
 // ----------------------------------------------------------------------------------------------
 // Array of BandParameters, one set per band
 BandParameters Band[NUMBER_OF_BANDS];
 
 // ----------------------------------------------------------------------------------------------
-// Variables for index into Band array
+// Variable for index into Band array
 byte BandIndexCurrent;
-// byte BandIndexPrevious;   All instances of this variable are for deletion.  It's not clear
-//                           that this variable has a purpose.
 
 // ----------------------------------------------------------------------------------------------
 // Initialisation of Si5351 DDS IC.  I2C address defaults to x60 in the NT7S si5351 library
@@ -357,8 +357,8 @@ ISR(PCINT2_vect)
 }
 
 // ****************************************************************************************************
-//      Start of setup() function.   Runs once.  Used to initialize variables, pin modes,
-//                                   start using libraries, etc..
+// Start of setup() function.   Runs once.  Used to initialize variables, pin modes,
+//                              start using libraries, etc..
 // ****************************************************************************************************
 
 void setup()
@@ -425,7 +425,6 @@ void setup()
     // Allow for an (unlikely) reduction in NUMBER_OF_BANDS since last EEPROM update
     if (BandIndexCurrent >= NUMBER_OF_BANDS)
         BandIndexCurrent = 1;
-    // BandIndexPrevious = BandIndexCurrent;  This line is due for deletion.
 
     int element_len = sizeof(BandParameters);
     for (int i = 0; i < NUMBER_OF_BANDS;)
@@ -434,16 +433,13 @@ void setup()
         i = i + 1;
     };
 
-    // ----------------------------------------------------------------------------------------------
     // Initialise and start the si5351 clocks.  Assumes the use of the default 25 MHz quartz crystal
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 153125);
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
 
-    // ----------------------------------------------------------------------------------------------
-    // Declare variable for actual frequency to be generated for a selected transmit frequency
+    // Variable for actual frequency to be generated for a selected transmit frequency
     volatile uint32_t f;
 
-    // ----------------------------------------------------------------------------------------------
     // Algorithm for determining actual VFO frequency to be generated for the transmit
     // frequency currently displayed on the LCD
     {
@@ -576,6 +572,7 @@ void loop()
 // ****************************************************************************************************
 
 // =======================================================================================
+// Vary transmit frequency based on new position of rotary encoder and current step size
 void ChangeFrequency(int dir)
 {
 
@@ -650,6 +647,7 @@ byte GetSwSet1ButtonNumberAtInstant()
 }
 
 // =======================================================================================
+// Read the analogue input pin 'p' and return its ADC value
 int ReadAnalogPin(byte p)
 {
     int i,
@@ -657,7 +655,8 @@ int ReadAnalogPin(byte p)
         nbr_reads = 1; //  this used to average 2 readings.  Resulted in failure
                        //  to identify the correct button due to averaging of
                        //  voltage levels under contact bounce scenarios, hence
-                       //  decoding to the wrong button number.
+                       //  decoding to the wrong button number.  This function is under
+                       //  review.
     for (i = 0; i < nbr_reads;)
     {
         val = val + analogRead(p);
@@ -668,17 +667,19 @@ int ReadAnalogPin(byte p)
 };
 
 // =======================================================================================
+//  Update the LCD if something has changed since last update
 void RefreshLcd()
 {
-    // Update the LCD
-    uint16_t f, g;
-    uint32_t band_l;
-    band_l = Band[BandIndexCurrent].Frequency;
+    // Variable used to format displayed frequency according to number of significant figures
+    uint16_t f;
+
+    // Variable used to hold current frequency for current band
+    uint32_t FrequencyCurrent;
+    FrequencyCurrent = Band[BandIndexCurrent].Frequency;
 
     // Check whether BandIndex has changed.  If so, set the cursor position and
     // update LCD with wavelength.
-
-    if (BandIndexCurrent != _last_BandIndex)
+    if (BandIndexCurrent != BandIndexPrevious)
     {
         lcd.setCursor(0, 0);
 
@@ -710,7 +711,7 @@ void RefreshLcd()
     // If so, set the cursor and update LCD with FL-50B PA Loading and Grid crib
     // details for the band.
 
-    if (BandIndexCurrent != _last_BandIndex)
+    if (BandIndexCurrent != BandIndexPrevious)
     {
         lcd.setCursor(0, 1);
 
@@ -736,26 +737,26 @@ void RefreshLcd()
         }
     }
 
-    if (BandIndexCurrent != _last_BandIndex)
+    if (BandIndexCurrent != BandIndexPrevious)
     {
-        _last_BandIndex = BandIndexCurrent;
+        BandIndexPrevious = BandIndexCurrent;
     }
 
     // Check whether frequency has changed.
     // If so, set the cursor position and update LCD with new frequency.
 
-    if (band_l != _last_freq)
+    if (FrequencyCurrent != FrequencyPrevious)
     {
 
         lcd.setCursor(6, 0);
 
-        f = band_l / 1000000;
+        f = FrequencyCurrent / 1000000;
         if (f < 10)
             lcd.print(' ');
         lcd.print(f);
         lcd.print('.');
 
-        f = (band_l % 1000000) / 1000;
+        f = (FrequencyCurrent % 1000000) / 1000;
         if (f < 100)
             lcd.print('0');
         if (f < 10)
@@ -763,7 +764,7 @@ void RefreshLcd()
         lcd.print(f);
         lcd.print('.');
 
-        f = band_l % 1000;
+        f = FrequencyCurrent % 1000;
         if (f < 100)
             lcd.print('0');
         if (f < 10)
@@ -772,9 +773,9 @@ void RefreshLcd()
         lcd.print(" ");
     }
 
-    if (band_l != _last_freq)
+    if (FrequencyCurrent != FrequencyPrevious)
     {
-        _last_freq = band_l;
+        FrequencyPrevious = FrequencyCurrent;
     }
 
     byte CursorPosition = 14;
