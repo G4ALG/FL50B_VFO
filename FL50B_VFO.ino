@@ -268,8 +268,8 @@ LiquidCrystal
 //  Arduino Nano digital pin assignments
 // ----------------------------------------------------------------------------------------------
 
-//  Inherent               0;  // Serial communications bus
-//  Inherent               1;  // Serial communications bus
+//  Inherent               0; // Serial communications bus
+//  Inherent               1; // Serial communications bus
 
 const byte ENCODER_A_ip2 = 2; // input from encoder pin A, pin D2 pulsed low
 const byte ENCODER_B_ip3 = 3; // input from encoder pin B, pin D3 pulsed low
@@ -324,27 +324,23 @@ typedef struct
     uint32_t StepSize;
 } BandParameters;
 
-
 // Array of BandParameters, one set per band
 BandParameters Band[NUMBER_OF_BANDS];
-
 
 // Variable for index into Band array
 byte BandIndexCurrent;
 
-
 // Initialisation of Si5351 DDS IC.  I2C address defaults to x60 in the NT7S si5351 library
 Si5351 si5351;
-
 
 // Variable for reading the two inputs that determine rotary encoder movement and direction
 Rotary r = Rotary(ENCODER_B_ip3, ENCODER_A_ip2);
 
-
-// Declare variables for controlling EEPROM writes
+// Variable for controlling EEPROM update
 unsigned long LastFrequencyChangeTimer;
-bool EepromUpdatedSinceLastFrequencyChange;
 
+// Variable to confirm EEPROM update
+bool EepromUpdatedSinceLastFrequencyChange;
 
 // Interrupt Service Routine (ISR) for reading rotary encoder
 ISR(PCINT2_vect)
@@ -357,35 +353,30 @@ ISR(PCINT2_vect)
 }
 
 // ****************************************************************************************************
-// Start of setup() function.   Runs once.  Used to initialize variables, pin modes,
-//                              start using libraries, etc..
+// Start of setup() function.  
 // ****************************************************************************************************
 
+// Runs once.  Used to initialize variables, pin modes, start using libraries, etc..
 void setup()
 {
-    
+
     // Set the serial communications data rate in bits per second (baud)
     Serial.begin(9600);
 
-    
     // Initialise Wire library to connect the I2C bus
     Wire.begin();
 
-    
     // Print project name to concole
     Serial.println("FL-50B VFO ");
 
-    
     // Initialise LCD with device type (16 columns and 2 rows)
     lcd.begin(16, 2);
 
-    
     // Display project name for 2 seconds, then clear it
     lcd.print("FL-50B VFO");
     delay(2000);
     lcd.clear();
 
-   
     // Display version number (first row) and version date (second row) for 2 seconds, then clear it
     lcd.print("Build V01.06");
     lcd.setCursor(0, 1);
@@ -393,7 +384,6 @@ void setup()
     delay(2000);
     lcd.clear();
 
-   
     // Display author details for 2 seconds, then clear it
     lcd.print("Steve Rawlings ");
     lcd.setCursor(0, 1);
@@ -401,27 +391,22 @@ void setup()
     delay(2000);
     lcd.clear();
 
-    
     // Prepare for subsequent use of the LCD and show underscore cursor.
     lcd.cursor();
 
-    
     // Set pinMode for Analogue A2 input (Switch Set 1) to pull up.
     pinMode(SW_SET1_ipA2, INPUT_PULLUP);
 
-   
     // Initialise Pin Change Interrupt Control Register for rotary encoder
     PCICR |= (1 << PCIE2);
     PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
     sei();
 
-    
     // Load Band array from EEPROM
     BandIndexCurrent = EEPROM.read(0);
     Serial.print("setup() eeprom: BandIndex=");
     Serial.println(BandIndexCurrent);
 
-    
     // Allow for an (unlikely) reduction in NUMBER_OF_BANDS since last EEPROM update
     if (BandIndexCurrent >= NUMBER_OF_BANDS)
         BandIndexCurrent = 1;
@@ -450,35 +435,33 @@ void setup()
             f = Band[BandIndexCurrent].Frequency + 5172400;
     }
 
-   
     // Initialise Si5351 frequency and output channel ('clock')
     si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
-    
     // Turn on the required output channel (CLK0)
     si5351.output_enable(SI5351_CLK0, 1);
 
-   
     // Initialise variables relating to frequency change events
     LastFrequencyChangeTimer = millis();
     EepromUpdatedSinceLastFrequencyChange = false;
 }
 
+
 // ****************************************************************************************************
-//  Start of loop() function.    This function loops repeatedly.
+//  Start of loop() function.    
 // ****************************************************************************************************
 
+// This function loops repeatedly.
 void loop()
 {
     UpdateEeprom();
     RefreshLcd();
 
     {
-        
+
         // Declare variable for actual frequency to be generated for a selected transmit frequency
         volatile uint32_t f;
 
-        
         // Algorithm for determining actual VFO frequency to be generated for the transmit
         // frequency currently displayed on the LCD
         {
@@ -489,36 +472,29 @@ void loop()
                 f = Band[BandIndexCurrent].Frequency + 5172400;
         }
 
-        
         // Initialise Si5351 frequency and output channel ('clock')
         si5351.set_freq(f * SI5351_FREQ_MULT, SI5351_CLK0);
 
-        
         // Initialise variables relating to frequency change events
         LastFrequencyChangeTimer = millis();
         EepromUpdatedSinceLastFrequencyChange = false;
     }
 
-    
     // Initialise variables for evaluating characteristics of button press
     bool ButtonHeldFlag = false;
     unsigned long ButtonPressedDuration = millis();
 
-   
     // Store most recent Switch Set 1 button number to have been pressed
     ButtonNumber = GetSwSet1ButtonNumber();
 
-   
     // Wait until the button in Switch Set 1 has been released
     while (ButtonNumber > 0 && GetSwSet1ButtonNumber() > 0)
     {
         delay(5);
     }
 
-    
     // A switch Set 1 button has been pressed and released, so initiate action
 
-    
     // Button 1, Switch Set 1 initiates the Band Up action
     if (ButtonNumber == 1)
     {
@@ -540,7 +516,6 @@ void loop()
             BandIndexCurrent = BandIndexCurrent - 1;
     };
 
-    
     // Button 3, Switch Set 1 (Rotary Encoder push button) initiates the Reduce Step Size action
     if (ButtonNumber == 3)
         switch (Band[BandIndexCurrent].StepSize)
